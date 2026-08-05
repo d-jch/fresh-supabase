@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "name": "daisyui",
+  "version": "0.1.0",
+  "description": "Add daisyUI 5 to a verified Fresh Tailwind CSS v4 project.",
+  "dependencies": [],
+  "requirements": ["fresh-2", "fresh-vite", "tailwind-4"],
+  "operations": [
+    {
+      "kind": "dependency.ensure",
+      "alias": "daisyui",
+      "specifier": "npm:daisyui@^5.7.16"
+    },
+    {
+      "kind": "css.ensure",
+      "path": "assets/styles.css",
+      "statement": "@plugin \"daisyui\";"
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "name": "password-based-auth",
+  "version": "0.1.0",
+  "description": "Add Fresh-native password authentication, protected account routes, and scoped CSRF.",
+  "dependencies": ["supabase-client", "daisyui"],
+  "requirements": ["fresh-2", "fresh-vite", "tailwind-4"],
+  "operations": [
+    {
+      "kind": "file.create",
+      "path": "lib/supabase/redirect.ts",
+      "template": "templates/lib/supabase/redirect.ts"
+    },
+    {
+      "kind": "file.create",
+      "path": "lib/supabase/require_user.ts",
+      "template": "templates/lib/supabase/require_user.ts"
+    },
+    {
+      "kind": "file.create",
+      "path": "routes/(auth)/_middleware.ts",
+      "template": "templates/routes/(auth)/_middleware.ts"
+    },
+    {
+      "kind": "file.create",
+      "path": "routes/(auth)/auth/sign-in.tsx",
+      "template": "templates/routes/(auth)/auth/sign-in.tsx"
+    },
+    {
+      "kind": "file.create",
+      "path": "routes/(auth)/auth/sign-up.tsx",
+      "template": "templates/routes/(auth)/auth/sign-up.tsx"
+    },
+    {
+      "kind": "file.create",
+      "path": "routes/(auth)/auth/forgot-password.tsx",
+      "template": "templates/routes/(auth)/auth/forgot-password.tsx"
+    },
+    {
+      "kind": "file.create",
+      "path": "routes/(auth)/auth/update-password.tsx",
+      "template": "templates/routes/(auth)/auth/update-password.tsx"
+    },
+    {
+      "kind": "file.create",
+      "path": "routes/(auth)/auth/confirm.ts",
+      "template": "templates/routes/(auth)/auth/confirm.ts"
+    },
+    {
+      "kind": "file.create",
+      "path": "routes/(auth)/auth/sign-out.ts",
+      "template": "templates/routes/(auth)/auth/sign-out.ts"
+    },
+    {
+      "kind": "file.create",
+      "path": "routes/(protected)/_middleware.ts",
+      "template": "templates/routes/(protected)/_middleware.ts"
+    },
+    {
+      "kind": "file.create",
+      "path": "routes/(protected)/account.tsx",
+      "template": "templates/routes/(protected)/account.tsx"
+    },
+    {
+      "kind": "file.create",
+      "path": "supabase/templates/confirmation.html",
+      "template": "templates/supabase/confirmation.html"
+    },
+    {
+      "kind": "file.create",
+      "path": "supabase/templates/recovery.html",
+      "template": "templates/supabase/recovery.html"
+    }
+  ]
+}

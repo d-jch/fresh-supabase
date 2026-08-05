@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "name": "supabase-client",
+  "version": "0.1.0",
+  "description": "Add request-scoped Supabase SSR and browser clients without UI requirements.",
+  "dependencies": [],
+  "requirements": ["fresh-2"],
+  "operations": [
+    {
+      "kind": "dependency.ensure",
+      "alias": "@supabase/supabase-js",
+      "specifier": "npm:@supabase/supabase-js@^2.112.0"
+    },
+    {
+      "kind": "dependency.ensure",
+      "alias": "@supabase/ssr",
+      "specifier": "npm:@supabase/ssr@^0.12.4"
+    },
+    {
+      "kind": "env.ensure",
+      "path": ".env.example",
+      "name": "FRESH_PUBLIC_SUPABASE_URL",
+      "placeholder": "https://your-project.supabase.co"
+    },
+    {
+      "kind": "env.ensure",
+      "path": ".env.example",
+      "name": "FRESH_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "placeholder": "your-publishable-key"
+    },
+    {
+      "kind": "file.create",
+      "path": "lib/supabase/env.ts",
+      "template": "templates/lib/supabase/env.ts"
+    },
+    {
+      "kind": "file.create",
+      "path": "lib/supabase/client.ts",
+      "template": "templates/lib/supabase/client.ts"
+    },
+    {
+      "kind": "file.create",
+      "path": "lib/supabase/server.ts",
+      "template": "templates/lib/supabase/server.ts"
+    },
+    {
+      "kind": "file.create",
+      "path": "lib/supabase/response.ts",
+      "template": "templates/lib/supabase/response.ts"
+    }
+  ]
+}

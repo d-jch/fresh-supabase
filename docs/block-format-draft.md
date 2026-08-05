@@ -1,10 +1,10 @@
 # Embedded block format draft
 
-- Status: Draft for Phase 1
-- Schema version: not yet assigned
+- Status: Accepted for the Phase 1 planner
+- Schema version: 1
 
-This document constrains the first block schema without freezing field names too
-early. Phase 0 intentionally contains no installable block definitions.
+The Phase 1 parser contract is implemented by `packages/cli/src/block.ts` and
+the definitions embedded under `packages/cli/blocks/`.
 
 ## Goals
 
@@ -24,7 +24,7 @@ early. Phase 0 intentionally contains no installable block definitions.
   "description": "Human-readable catalog description",
   "dependencies": ["another-block"],
   "requirements": [
-    { "capability": "fresh", "range": ">=2 <3" }
+    "fresh-2"
   ],
   "operations": [
     {
@@ -36,7 +36,9 @@ early. Phase 0 intentionally contains no installable block definitions.
 }
 ```
 
-The example is illustrative, not a committed parser contract.
+The field names and operation families are the committed schema-version-1
+contract. Definitions with unknown fields, capabilities, or operation kinds are
+rejected.
 
 ## Allowed v0.1 operation families
 
@@ -93,8 +95,11 @@ The planner must:
 2. canonicalize and contain every target path within the project root;
 3. inspect all required files without mutation;
 4. report every requirement failure and conflict deterministically;
-5. produce an ordered plan with expected before/after hashes;
-6. hand the same plan to dry-run output or to the executor.
+5. produce a deterministic ordered plan;
+6. hand the same plan to dry-run output or, in Phase 2, to the executor.
+
+Before/after hashes belong to the Phase 2 executable plan because Phase 1 does
+not load or render template payloads.
 
 The executor must reject a stale plan if a precondition hash has changed.
 
@@ -102,13 +107,14 @@ The executor must reject a stale plan if a precondition hash has changed.
 
 The eventual project-local manifest records the schema version, CLI version,
 installed block versions, operation results, and content hashes. It is audit
-state, not permission to overwrite later user edits. The manifest path and JSON
-shape will be decided in Phase 1.
+state, not permission to overwrite later user edits. Its exact JSON shape is a
+Phase 2 executor decision.
 
-## Open Phase 1 questions
+## Phase 1 decisions
 
-- exact schema validation strategy without adding an unnecessary framework;
-- package-relative location for embedded metadata and templates;
-- representation of alternatives such as `deno.json` versus `deno.jsonc`;
-- stable dry-run serialization and diagnostics format;
-- exact rollback journal and manifest filename.
+- Schema validation uses a dependency-free runtime validator.
+- Metadata is package-local under `packages/cli/blocks/<name>/block.json`.
+- Project inspection accepts exactly one of `deno.json` and `deno.jsonc` and
+  parses JSONC comments and trailing commas without rewriting the file.
+- Dry-run output and issue ordering are deterministic and human-readable.
+- Rollback journal and manifest filenames remain Phase 2 decisions.

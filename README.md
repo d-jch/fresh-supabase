@@ -10,10 +10,10 @@ cd my-app
 deno x -A jsr:@fresh-supabase/cli add password-based-auth
 ```
 
-The repository is currently at **Phase 0**. It contains the frozen v0.1
-architecture, acceptance criteria, repository skeleton, and a minimal CLI that
-supports only `--help` and `--version`. Block installation and the application
-example are intentionally not implemented yet.
+The repository is currently at **Phase 1**. It contains the frozen v0.1
+architecture, a validated embedded block catalog, project-capability inspection,
+and a deterministic read-only installation planner. Filesystem mutation and the
+application example are intentionally deferred to later phases.
 
 ## Planned v0.1 surface
 
@@ -32,6 +32,10 @@ Prerequisite: Deno 2.9.3 or a compatible later Deno 2 release.
 ```bash
 deno run packages/cli/main.ts --help
 deno run packages/cli/main.ts --version
+deno run packages/cli/main.ts list
+deno run packages/cli/main.ts view supabase-client
+deno run packages/cli/main.ts doctor
+deno run packages/cli/main.ts add supabase-client --dry-run
 deno task fmt
 deno task check
 deno task test
@@ -46,8 +50,9 @@ Architecture and review gates are defined in:
 ## Repository layout
 
 ```text
-packages/cli/              JSR CLI package
-blocks/                    embedded block definitions and templates (future)
+packages/cli/              JSR CLI package, catalog, and planner
+packages/cli/blocks/       package-local embedded block definitions
+blocks/                    block authoring and provenance documentation
 tests/fixtures/upstream/   pinned official Fresh initializer outputs
 tests/fixtures/mutated/    deliberate existing-project edge cases
 tests/golden/              human-reviewed expected installation outputs
