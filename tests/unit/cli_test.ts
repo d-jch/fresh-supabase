@@ -43,6 +43,14 @@ Deno.test("--help prints the Phase 0 CLI contract", async () => {
   );
 });
 
+Deno.test("no arguments prints help", async () => {
+  const result = await runCli();
+
+  assert(result.code === 0, `expected exit code 0, got ${result.code}`);
+  assert(result.stderr === "", `expected empty stderr, got ${result.stderr}`);
+  assert(result.stdout.includes("Usage:"), "missing help usage");
+});
+
 Deno.test("--version prints the package version", async () => {
   const result = await runCli("--version");
 
@@ -55,5 +63,20 @@ Deno.test("--version prints the package version", async () => {
   assert(
     result.stdout === `fresh-supabase ${VERSION}\n`,
     `unexpected version output: ${result.stdout}`,
+  );
+});
+
+Deno.test("unsupported arguments fail without pretending to run a command", async () => {
+  const result = await runCli("doctor");
+
+  assert(result.code === 1, `expected exit code 1, got ${result.code}`);
+  assert(result.stdout === "", `expected empty stdout, got ${result.stdout}`);
+  assert(
+    result.stderr.includes("Unknown or unsupported arguments: doctor"),
+    `unexpected stderr: ${result.stderr}`,
+  );
+  assert(
+    result.stderr.includes("Phase 0 supports only --help and --version."),
+    "missing Phase 0 scope error",
   );
 });
