@@ -12,6 +12,24 @@ export interface PendingSupabaseChanges {
   headers: Headers;
 }
 
+export function createPendingSupabaseChanges(): PendingSupabaseChanges {
+  return { cookies: [], headers: new Headers() };
+}
+
+export function collectPendingSupabaseChanges(
+  pending: PendingSupabaseChanges,
+  cookies: PendingSupabaseCookie[],
+  headers: Record<string, string>,
+): void {
+  pending.cookies.push(...cookies.map((cookie) => ({
+    ...cookie,
+    options: { ...cookie.options },
+  })));
+  for (const [name, value] of Object.entries(headers)) {
+    pending.headers.set(name, value);
+  }
+}
+
 function decodeCookieValue(value: string): string {
   try {
     return decodeURIComponent(value);
@@ -41,19 +59,12 @@ function requestCookies(
 
 export function createSupabaseServerClient(request: Request) {
   const config = readSupabasePublicConfig();
-  const pending: PendingSupabaseChanges = {
-    cookies: [],
-    headers: new Headers(),
-  };
+  const pending = createPendingSupabaseChanges();
   const supabase = createServerClient(config.url, config.publishableKey, {
     cookies: {
       getAll: () => requestCookies(request),
-      setAll: (cookies, headers) => {
-        pending.cookies.push(...cookies);
-        for (const [name, value] of Object.entries(headers)) {
-          pending.headers.set(name, value);
-        }
-      },
+      setAll: (cookies, headers) =>
+        collectPendingSupabaseChanges(pending, cookies, headers),
     },
   });
   return { supabase, pending };

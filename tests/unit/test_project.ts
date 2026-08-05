@@ -48,6 +48,10 @@ export async function writeTestProject(
   if (options.daisyui) imports.daisyui = "npm:daisyui@^5.7.16";
 
   const config = {
+    compilerOptions: {
+      jsx: "precompile",
+      jsxImportSource: "preact",
+    },
     tasks: { dev: "vite", build: "vite build" },
     imports,
   };
@@ -58,6 +62,10 @@ export async function writeTestProject(
       "deno.jsonc",
       `{
   // Fresh project config
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "preact",
+  },
   "tasks": {
     "dev": "vite",
     "build": "vite build",
@@ -95,6 +103,14 @@ export default defineConfig({
     root,
     "client.ts",
     'import "./assets/styles.css";\n',
+  );
+  await writeText(
+    root,
+    "utils.ts",
+    `import { createDefine } from "fresh";
+
+export const define = createDefine<Record<string, unknown>>();
+`,
   );
 }
 
