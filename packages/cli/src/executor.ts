@@ -523,13 +523,47 @@ export async function recoverInterruptedInstall(
     directoryTargets.push(await resolveContainedTarget(root, directory));
   }
 
+  const actions: Array<"none" | "restore" | "remove"> = [];
+  for (const mutation of journal.mutations) {
+    let current: TextState;
+    try {
+      current = await readTextState(root, mutation.path);
+    } catch (error) {
+      throw new InstallExecutionError(
+        `stale recovery: cannot verify ${mutation.path}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
+    if (mutation.beforeExists) {
+      if (current.exists && current.hash === mutation.beforeHash) {
+        actions.push("none");
+      } else if (current.exists && current.hash === mutation.afterHash) {
+        actions.push("restore");
+      } else {
+        throw new InstallExecutionError(
+          `stale recovery: ${mutation.path} no longer matches its recorded before or after hash; journal was preserved`,
+        );
+      }
+    } else if (!current.exists) {
+      actions.push("none");
+    } else if (current.hash === mutation.afterHash) {
+      actions.push("remove");
+    } else {
+      throw new InstallExecutionError(
+        `stale recovery: ${mutation.path} no longer matches its recorded after hash; journal was preserved`,
+      );
+    }
+  }
+
   for (let index = journal.mutations.length - 1; index >= 0; index--) {
     const mutation = journal.mutations[index];
     const target = targets[index];
-    if (mutation.beforeExists) {
+    if (actions[index] === "restore") {
       await Deno.mkdir(dirname(target), { recursive: true });
       await Deno.writeTextFile(target, mutation.beforeContent!);
-    } else if (await targetExists(target)) {
+    } else if (actions[index] === "remove") {
       const info = await Deno.lstat(target);
       if (!info.isFile) {
         throw new InstallExecutionError(

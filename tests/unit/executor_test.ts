@@ -1,8 +1,10 @@
 import { join } from "node:path";
 import {
   createExecutablePlan,
+  type ExecutableMutation,
   executeInstallPlan,
   MANIFEST_PATH,
+  recoverInterruptedInstall,
 } from "../../packages/cli/src/executor.ts";
 import { runCli } from "../../packages/cli/main.ts";
 import { createInstallPlan } from "../../packages/cli/src/planner.ts";
@@ -10,6 +12,32 @@ import { assert, assertEquals, assertRejects } from "./assert.ts";
 import { snapshotProject, withTestProject } from "./test_project.ts";
 
 const VERSION = "0.1.0";
+
+async function writeJournal(
+  root: string,
+  mutations: ExecutableMutation[],
+  createdDirectories = [".fresh-supabase"],
+): Promise<void> {
+  await Deno.mkdir(join(root, ".fresh-supabase"), { recursive: true });
+  await Deno.writeTextFile(
+    join(root, ".fresh-supabase", "install-journal.json"),
+    JSON.stringify(
+      {
+        schemaVersion: 1,
+        mutations: mutations.map((mutation) => ({
+          path: mutation.path,
+          beforeExists: mutation.before.exists,
+          beforeHash: mutation.before.hash,
+          beforeContent: mutation.before.content,
+          afterHash: mutation.afterHash,
+        })),
+        createdDirectories,
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+}
 
 Deno.test("supabase-client executes without Tailwind and is idempotent", async () => {
   await withTestProject({}, async (root) => {
@@ -149,6 +177,56 @@ Deno.test("malformed existing manifest blocks execution without writes", async (
     );
     assertEquals(plan.mutations, []);
     assertEquals(await snapshotProject(root), before);
+  });
+});
+
+Deno.test("stale journal recovery preserves a later edit to an existing file", async () => {
+  await withTestProject({}, async (root) => {
+    const plan = await createExecutablePlan(root, "supabase-client", VERSION);
+    const mutation = plan.mutations.find((entry) =>
+      entry.path === "deno.json"
+    )!;
+    await writeJournal(root, [mutation]);
+    await Deno.writeTextFile(
+      join(root, mutation.path),
+      mutation.content + " ",
+    );
+    const diverged = await snapshotProject(root);
+
+    await assertRejects(
+      () => recoverInterruptedInstall(root),
+      "stale recovery",
+    );
+    assertEquals(await snapshotProject(root), diverged);
+  });
+});
+
+Deno.test("stale journal recovery does not delete a later-edited created file", async () => {
+  await withTestProject({}, async (root) => {
+    const plan = await createExecutablePlan(root, "supabase-client", VERSION);
+    const mutation = plan.mutations.find((entry) =>
+      entry.path === ".env.example"
+    )!;
+    const configMutation = plan.mutations.find((entry) =>
+      entry.path === "deno.json"
+    )!;
+    assertEquals(mutation.before.exists, false);
+    await writeJournal(root, [configMutation, mutation]);
+    await Deno.writeTextFile(
+      join(root, configMutation.path),
+      configMutation.content,
+    );
+    await Deno.writeTextFile(
+      join(root, mutation.path),
+      mutation.content + "# user change after interruption\n",
+    );
+    const diverged = await snapshotProject(root);
+
+    await assertRejects(
+      () => recoverInterruptedInstall(root),
+      "stale recovery",
+    );
+    assertEquals(await snapshotProject(root), diverged);
   });
 });
 

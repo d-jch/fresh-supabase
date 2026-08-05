@@ -121,7 +121,10 @@ result hashes, and installer-created directories. The executor writes it before
 changing planned targets. A later write failure restores preimages in reverse
 order; a later non-dry-run `add` validates and replays a journal left by process
 interruption before beginning a new preflight. Dry-run reports the journal as a
-conflict and never replays it.
+conflict and never replays it. Replay first classifies every target: an
+unchanged preimage needs no action, an exact `afterHash` may be rolled back, and
+any other state is a stale-recovery conflict that preserves both user content
+and journal.
 
 ## Phase 1 decisions
 
