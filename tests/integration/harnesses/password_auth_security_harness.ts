@@ -187,6 +187,31 @@ Deno.test("response commit preserves existing and Supabase cookies", () => {
   ]);
 });
 
+Deno.test("response commit rejects cookie injection characters", () => {
+  const invalidName = emptyPending();
+  invalidName.cookies.push(cookie("bad\nname", "value"));
+  assertThrows(
+    () => commitSupabaseResponse(new Response("ok"), invalidName),
+    /invalid cookie/i,
+  );
+
+  const invalidValue = emptyPending();
+  invalidValue.cookies.push(cookie("name", "bad;value"));
+  assertThrows(
+    () => commitSupabaseResponse(new Response("ok"), invalidValue),
+    /invalid cookie/i,
+  );
+
+  const invalidPath = emptyPending();
+  const pathCookie = cookie("name", "value");
+  pathCookie.options.path = "/\r\nInjected: true";
+  invalidPath.cookies.push(pathCookie);
+  assertThrows(
+    () => commitSupabaseResponse(new Response("ok"), invalidPath),
+    /cookie path/i,
+  );
+});
+
 Deno.test("server adapter collects every cookie and response cache header", () => {
   const pending = createPendingSupabaseChanges();
   collectPendingSupabaseChanges(

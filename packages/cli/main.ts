@@ -152,7 +152,7 @@ function usageError(message: string, io: CliIo): number {
 export async function runCli(
   args: readonly string[],
   io: CliIo = defaultIo,
-  cwd = Deno.cwd(),
+  cwd: string = Deno.cwd(),
 ): Promise<number> {
   if (args.length === 0 || (args.length === 1 && args[0] === "--help")) {
     io.stdout(HELP);

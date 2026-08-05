@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "noTailwind": "../upstream/fresh-2.3.3-no-tailwind",
+    "tailwind": "../upstream/fresh-2.3.3-tailwind"
+  },
+  "mutations": {
+    "existing-daisyui": "adds the exact daisyUI dependency and CSS plugin statement",
+    "existing-auth-route": "adds a user-owned sign-in route",
+    "commented-deno-jsonc": "converts deno.json to deno.jsonc with comments and a trailing comma",
+    "missing-tailwind-plugin": "retains Tailwind imports but removes tailwindcss() from Vite plugins",
+    "partial-installation": "adds exactly one embedded supabase-client template without installer state"
+  },
+  "files": {
+    "existing-daisyui": {
+      ".gitignore": "34bda69eb4deb8228d25d7a19dcc6528bc787560683639c0ea303c866fa0be08",
+      "assets/styles.css": "aabc32cf2c553ebd4925c5c295ba90b1aff60a52c2029d3f9fb6450096d8f5fd",
+      "client.ts": "bc823aa0685f4aca19078169b2d331c59fa901b2bc300928fb481bc58381bf81",
+      "components/Button.tsx": "1944c487179125c5ac4b395a1ce2a8772838cddca25317479abcec7c66819f96",
+      "deno.json": "f03846ccd29be76130e9d2c4ffff47ed310e1dec633f49dc104f634fe6149b5d",
+      "islands/Counter.tsx": "3211057b74b3567a0548b251e43eadb4419c23155e9a54a2bb1415d3f58df7b1",
+      "main.ts": "df63c8994e8e522fda7faa411a8fcfef1823fc2a68f79cff2be1b6ebf5e2e6a9",
+      "README.md": "b1fab25fb0ce1d2e52e27c71a1664b0d2ab77c4ddaa1610b3e48ab0e2194840d",
+      "routes/_app.tsx": "21e377e00f9b9f0def6696df6a101e437a419d930135e59dc51cc6998a2a9de5",
+      "routes/api/[name].tsx": "fd48518cd33964d1f6b628363349e846905b031de4c8dddf5e5f93c0d2664637",
+      "routes/index.tsx": "80ff74efad53f22b1675562ad9386a7d822039a9fd4e3220c49b30f98db867c0",
+      "static/favicon.ico": "ceefc31bd51194e03c78f9d35f9ca4d8b474b01280f83cd1490fb96a87c0dd12",
+      "static/logo.svg": "bf1196aeac0c511ec4b81b846993de208012c4158fba73d17b575236164d63ce",
+      "utils.ts": "81a9c4fea12c571f9258c9117f725d239a1da18b964f79398c7937b8a392fff6",
+      "vite.config.ts": "983782f6e87e1c1d24f26982c3e6fe454f8adc6e799c23305f5d5aa1b7446189"
+    },
+    "existing-auth-route": {
+      ".gitignore": "34bda69eb4deb8228d25d7a19dcc6528bc787560683639c0ea303c866fa0be08",
+      "assets/styles.css": "a9aae2dc302b22863a27481a0654c958958ecdda683f102d12ae4aa7cdfd8899",
+      "client.ts": "bc823aa0685f4aca19078169b2d331c59fa901b2bc300928fb481bc58381bf81",
+      "components/Button.tsx": "1944c487179125c5ac4b395a1ce2a8772838cddca25317479abcec7c66819f96",
+      "deno.json": "d19ce2b5996ceb3dd56fec9ccf97b54ffaa02e6c4d4920a3e42c2118b75de118",
+      "islands/Counter.tsx": "3211057b74b3567a0548b251e43eadb4419c23155e9a54a2bb1415d3f58df7b1",
+      "main.ts": "df63c8994e8e522fda7faa411a8fcfef1823fc2a68f79cff2be1b6ebf5e2e6a9",
+      "README.md": "b1fab25fb0ce1d2e52e27c71a1664b0d2ab77c4ddaa1610b3e48ab0e2194840d",
+      "routes/_app.tsx": "21e377e00f9b9f0def6696df6a101e437a419d930135e59dc51cc6998a2a9de5",
+      "routes/(auth)/auth/sign-in.tsx": "3a1e9321c2918ab2ddf69aa6110423a4758cd2023da40bd7fac88ad054b574bf",
+      "routes/api/[name].tsx": "fd48518cd33964d1f6b628363349e846905b031de4c8dddf5e5f93c0d2664637",
+      "routes/index.tsx": "80ff74efad53f22b1675562ad9386a7d822039a9fd4e3220c49b30f98db867c0",
+      "static/favicon.ico": "ceefc31bd51194e03c78f9d35f9ca4d8b474b01280f83cd1490fb96a87c0dd12",
+      "static/logo.svg": "bf1196aeac0c511ec4b81b846993de208012c4158fba73d17b575236164d63ce",
+      "utils.ts": "81a9c4fea12c571f9258c9117f725d239a1da18b964f79398c7937b8a392fff6",
+      "vite.config.ts": "983782f6e87e1c1d24f26982c3e6fe454f8adc6e799c23305f5d5aa1b7446189"
+    },
+    "commented-deno-jsonc": {
+      ".gitignore": "34bda69eb4deb8228d25d7a19dcc6528bc787560683639c0ea303c866fa0be08",
+      "assets/styles.css": "136a38f3be59479fa9bc1cbe7b90f3936fdedf3b18e6ca783f69852aa18bca93",
+      "client.ts": "bc823aa0685f4aca19078169b2d331c59fa901b2bc300928fb481bc58381bf81",
+      "components/Button.tsx": "1944c487179125c5ac4b395a1ce2a8772838cddca25317479abcec7c66819f96",
+      "deno.jsonc": "dec7accaa2fd6fa9abc62afc08c190c2b16fbde6503c2d661f445a6a61de4194",
+      "islands/Counter.tsx": "3211057b74b3567a0548b251e43eadb4419c23155e9a54a2bb1415d3f58df7b1",
+      "main.ts": "df63c8994e8e522fda7faa411a8fcfef1823fc2a68f79cff2be1b6ebf5e2e6a9",
+      "README.md": "b1fab25fb0ce1d2e52e27c71a1664b0d2ab77c4ddaa1610b3e48ab0e2194840d",
+      "routes/_app.tsx": "f2ad463bae0a89db2db7ba1c5b681ccc2a1c5cc303957623e5312feeb1d1c929",
+      "routes/api/[name].tsx": "fd48518cd33964d1f6b628363349e846905b031de4c8dddf5e5f93c0d2664637",
+      "routes/index.tsx": "80ff74efad53f22b1675562ad9386a7d822039a9fd4e3220c49b30f98db867c0",
+      "static/favicon.ico": "ceefc31bd51194e03c78f9d35f9ca4d8b474b01280f83cd1490fb96a87c0dd12",
+      "static/logo.svg": "bf1196aeac0c511ec4b81b846993de208012c4158fba73d17b575236164d63ce",
+      "utils.ts": "81a9c4fea12c571f9258c9117f725d239a1da18b964f79398c7937b8a392fff6",
+      "vite.config.ts": "cdcee1447c4b16bce6f49141c86ecd5ecdcc5eb2ba99a60ac52787cf1d587eaf"
+    },
+    "missing-tailwind-plugin": {
+      ".gitignore": "34bda69eb4deb8228d25d7a19dcc6528bc787560683639c0ea303c866fa0be08",
+      "assets/styles.css": "a9aae2dc302b22863a27481a0654c958958ecdda683f102d12ae4aa7cdfd8899",
+      "client.ts": "bc823aa0685f4aca19078169b2d331c59fa901b2bc300928fb481bc58381bf81",
+      "components/Button.tsx": "1944c487179125c5ac4b395a1ce2a8772838cddca25317479abcec7c66819f96",
+      "deno.json": "d19ce2b5996ceb3dd56fec9ccf97b54ffaa02e6c4d4920a3e42c2118b75de118",
+      "islands/Counter.tsx": "3211057b74b3567a0548b251e43eadb4419c23155e9a54a2bb1415d3f58df7b1",
+      "main.ts": "df63c8994e8e522fda7faa411a8fcfef1823fc2a68f79cff2be1b6ebf5e2e6a9",
+      "README.md": "b1fab25fb0ce1d2e52e27c71a1664b0d2ab77c4ddaa1610b3e48ab0e2194840d",
+      "routes/_app.tsx": "21e377e00f9b9f0def6696df6a101e437a419d930135e59dc51cc6998a2a9de5",
+      "routes/api/[name].tsx": "fd48518cd33964d1f6b628363349e846905b031de4c8dddf5e5f93c0d2664637",
+      "routes/index.tsx": "80ff74efad53f22b1675562ad9386a7d822039a9fd4e3220c49b30f98db867c0",
+      "static/favicon.ico": "ceefc31bd51194e03c78f9d35f9ca4d8b474b01280f83cd1490fb96a87c0dd12",
+      "static/logo.svg": "bf1196aeac0c511ec4b81b846993de208012c4158fba73d17b575236164d63ce",
+      "utils.ts": "81a9c4fea12c571f9258c9117f725d239a1da18b964f79398c7937b8a392fff6",
+      "vite.config.ts": "c316071401db340cf0f0a5a960eb0bdcaa65c96c5ef044b4f96d89a30a98b0a3"
+    },
+    "partial-installation": {
+      ".gitignore": "34bda69eb4deb8228d25d7a19dcc6528bc787560683639c0ea303c866fa0be08",
+      "assets/styles.css": "136a38f3be59479fa9bc1cbe7b90f3936fdedf3b18e6ca783f69852aa18bca93",
+      "client.ts": "bc823aa0685f4aca19078169b2d331c59fa901b2bc300928fb481bc58381bf81",
+      "components/Button.tsx": "1944c487179125c5ac4b395a1ce2a8772838cddca25317479abcec7c66819f96",
+      "deno.json": "9f169d24e5d06104968e1ae9a7d4fcc148e382bc930a35b092f0410b946f73f7",
+      "islands/Counter.tsx": "3211057b74b3567a0548b251e43eadb4419c23155e9a54a2bb1415d3f58df7b1",
+      "lib/supabase/env.ts": "25e28932df2c756ab151667fd8742c86366e66970032de8ff0b0e08dd249886c",
+      "main.ts": "df63c8994e8e522fda7faa411a8fcfef1823fc2a68f79cff2be1b6ebf5e2e6a9",
+      "README.md": "b1fab25fb0ce1d2e52e27c71a1664b0d2ab77c4ddaa1610b3e48ab0e2194840d",
+      "routes/_app.tsx": "f2ad463bae0a89db2db7ba1c5b681ccc2a1c5cc303957623e5312feeb1d1c929",
+      "routes/api/[name].tsx": "fd48518cd33964d1f6b628363349e846905b031de4c8dddf5e5f93c0d2664637",
+      "routes/index.tsx": "80ff74efad53f22b1675562ad9386a7d822039a9fd4e3220c49b30f98db867c0",
+      "static/favicon.ico": "ceefc31bd51194e03c78f9d35f9ca4d8b474b01280f83cd1490fb96a87c0dd12",
+      "static/logo.svg": "bf1196aeac0c511ec4b81b846993de208012c4158fba73d17b575236164d63ce",
+      "utils.ts": "81a9c4fea12c571f9258c9117f725d239a1da18b964f79398c7937b8a392fff6",
+      "vite.config.ts": "cdcee1447c4b16bce6f49141c86ecd5ecdcc5eb2ba99a60ac52787cf1d587eaf"
+    }
+  }
+}

@@ -6,4 +6,5 @@ Thumbs.db
 coverage/
 dist/
 tmp/
-
+node_modules/
+_fresh/

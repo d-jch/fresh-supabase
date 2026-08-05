@@ -9,8 +9,13 @@ permissions:
 
 jobs:
   quality:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
 
     steps:
       - name: Checkout
@@ -26,6 +31,10 @@ jobs:
 
       - name: Type check
         run: deno task check
+
+      - name: Package dry run
+        working-directory: packages/cli
+        run: deno publish --dry-run
 
       - name: Test
         run: deno task test

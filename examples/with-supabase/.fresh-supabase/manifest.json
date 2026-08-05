@@ -1,0 +1,181 @@
+{
+  "schemaVersion": 1,
+  "cliVersion": "0.1.0",
+  "blocks": [
+    {
+      "name": "daisyui",
+      "version": "0.1.0"
+    },
+    {
+      "name": "password-based-auth",
+      "version": "0.1.0"
+    },
+    {
+      "name": "supabase-client",
+      "version": "0.1.0"
+    }
+  ],
+  "operations": [
+    {
+      "block": "daisyui",
+      "key": "css:assets/styles.css:@plugin \"daisyui\";",
+      "kind": "css.ensure",
+      "target": "assets/styles.css",
+      "contentHash": "aabc32cf2c553ebd4925c5c295ba90b1aff60a52c2029d3f9fb6450096d8f5fd"
+    },
+    {
+      "block": "daisyui",
+      "key": "dependency:daisyui",
+      "kind": "dependency.ensure",
+      "target": "deno.json",
+      "contentHash": "e5ca2ccfda77c48c6bb49fbc22548320d2e4e14ad428bdef3a7a2dcbc13b5abb"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:lib/supabase/redirect.ts",
+      "kind": "file.create",
+      "target": "lib/supabase/redirect.ts",
+      "contentHash": "800b6a3c57742e47dd863c4a37d3c303066588c5b310a634c9a58a5d1706bbbc"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:lib/supabase/require_user.ts",
+      "kind": "file.create",
+      "target": "lib/supabase/require_user.ts",
+      "contentHash": "7cdba60a7c1682cea313b433226fcc5dc0a3a2764ac38976823158d48398fb46"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:routes/(auth)/_middleware.ts",
+      "kind": "file.create",
+      "target": "routes/(auth)/_middleware.ts",
+      "contentHash": "3f72844021b44e3426c0fdba442b8af3f926ddaa565541dee2bfdbce90666ba4"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:routes/(auth)/auth/confirm.ts",
+      "kind": "file.create",
+      "target": "routes/(auth)/auth/confirm.ts",
+      "contentHash": "ac8b891cf8a59f2879030db7bcc9a1b2c5aaedb834f614bd4e2b35195a23b57b"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:routes/(auth)/auth/forgot-password.tsx",
+      "kind": "file.create",
+      "target": "routes/(auth)/auth/forgot-password.tsx",
+      "contentHash": "12f0e3f36ba1e7a6627cc6911e03f1f9e4682f10c46581b68800eae2fbca3c41"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:routes/(auth)/auth/sign-in.tsx",
+      "kind": "file.create",
+      "target": "routes/(auth)/auth/sign-in.tsx",
+      "contentHash": "3a404063c3c59aef99fdbeffa58071876e0d42044614289da59b477c6a126fd9"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:routes/(auth)/auth/sign-out.ts",
+      "kind": "file.create",
+      "target": "routes/(auth)/auth/sign-out.ts",
+      "contentHash": "725a3be3a57b3b2136d2820a7d6336b404a548400271bada69e99a7efceca089"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:routes/(auth)/auth/sign-up.tsx",
+      "kind": "file.create",
+      "target": "routes/(auth)/auth/sign-up.tsx",
+      "contentHash": "9b7c348ff4a9cd73c03a312600bdd3b8753004cba345c96a3b1a55f9c85507cc"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:routes/(auth)/auth/update-password.tsx",
+      "kind": "file.create",
+      "target": "routes/(auth)/auth/update-password.tsx",
+      "contentHash": "5b2f529f5184174e2dad24540bfa99b31b32477ff754255765acaf357da5af0b"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:routes/(protected)/_middleware.ts",
+      "kind": "file.create",
+      "target": "routes/(protected)/_middleware.ts",
+      "contentHash": "c68b421510a162d4a96b3d66e05f7acb2e449e606aa07484974d1e239525a321"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:routes/(protected)/account.tsx",
+      "kind": "file.create",
+      "target": "routes/(protected)/account.tsx",
+      "contentHash": "4ff5a2e071955aa4e5ed8ba117b57a4eb750bbc40ecfaf407f666974e6baf2ba"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:supabase/templates/confirmation.html",
+      "kind": "file.create",
+      "target": "supabase/templates/confirmation.html",
+      "contentHash": "2e706211ece48f416f095673d34d0596deba4934bf229045120c6a516ddd4539"
+    },
+    {
+      "block": "password-based-auth",
+      "key": "file:supabase/templates/recovery.html",
+      "kind": "file.create",
+      "target": "supabase/templates/recovery.html",
+      "contentHash": "5ecdbeb1ffec7df4798a72d4a3fb195d9fc1257841788d13e6836f56954d937f"
+    },
+    {
+      "block": "supabase-client",
+      "key": "dependency:@supabase/ssr",
+      "kind": "dependency.ensure",
+      "target": "deno.json",
+      "contentHash": "e5ca2ccfda77c48c6bb49fbc22548320d2e4e14ad428bdef3a7a2dcbc13b5abb"
+    },
+    {
+      "block": "supabase-client",
+      "key": "dependency:@supabase/supabase-js",
+      "kind": "dependency.ensure",
+      "target": "deno.json",
+      "contentHash": "e5ca2ccfda77c48c6bb49fbc22548320d2e4e14ad428bdef3a7a2dcbc13b5abb"
+    },
+    {
+      "block": "supabase-client",
+      "key": "env:.env.example:FRESH_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "kind": "env.ensure",
+      "target": ".env.example",
+      "contentHash": "07de17fe4721220ad32864b5cd9a135cb4ae217c6941a39669dc12e87a4fb496"
+    },
+    {
+      "block": "supabase-client",
+      "key": "env:.env.example:FRESH_PUBLIC_SUPABASE_URL",
+      "kind": "env.ensure",
+      "target": ".env.example",
+      "contentHash": "07de17fe4721220ad32864b5cd9a135cb4ae217c6941a39669dc12e87a4fb496"
+    },
+    {
+      "block": "supabase-client",
+      "key": "file:lib/supabase/client.ts",
+      "kind": "file.create",
+      "target": "lib/supabase/client.ts",
+      "contentHash": "c544ce9c30c8bad448eb5b01198bac160922247771abc081fa0568a6b44936af"
+    },
+    {
+      "block": "supabase-client",
+      "key": "file:lib/supabase/env.ts",
+      "kind": "file.create",
+      "target": "lib/supabase/env.ts",
+      "contentHash": "25e28932df2c756ab151667fd8742c86366e66970032de8ff0b0e08dd249886c"
+    },
+    {
+      "block": "supabase-client",
+      "key": "file:lib/supabase/response.ts",
+      "kind": "file.create",
+      "target": "lib/supabase/response.ts",
+      "contentHash": "07b723c65c83b889343c628de284f34a46de77785e63d3e7030ef84537cbac7e"
+    },
+    {
+      "block": "supabase-client",
+      "key": "file:lib/supabase/server.ts",
+      "kind": "file.create",
+      "target": "lib/supabase/server.ts",
+      "contentHash": "3a8aba240f8fabc64b0840d527b8e7d9bbb12ff2c057dc33b20333f15ec7cd6b"
+    }
+  ]
+}

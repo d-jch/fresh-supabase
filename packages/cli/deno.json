@@ -1,5 +1,16 @@
 {
   "name": "@fresh-supabase/cli",
   "version": "0.1.0",
-  "exports": "./main.ts"
+  "license": "MIT",
+  "exports": "./main.ts",
+  "publish": {
+    "include": [
+      "main.ts",
+      "src",
+      "blocks",
+      "README.md",
+      "LICENSE",
+      "deno.json"
+    ]
+  }
 }
