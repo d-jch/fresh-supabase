@@ -104,6 +104,11 @@ Deno.test("redirect helper rejects unsafe candidates and fallbacks", () => {
     "/line\nbreak",
     "/encoded%0abreak",
     "/malformed%2",
+    "/.//evil.example/path",
+    "/foo/..//evil.example/path",
+    "/%2e//evil.example/path",
+    "/%2e%2e//evil.example/path",
+    "/a/%2e%2e//evil.example/path",
     "account",
   ];
   for (const value of unsafe) {
@@ -116,9 +121,35 @@ Deno.test("redirect helper rejects unsafe candidates and fallbacks", () => {
       "/\\evil.example",
       "/bad%0afallback",
       "/bad%2",
+      "/.//fallback.example",
+      "/a/..//fallback.example",
+      "/%2e//fallback.example",
+      "/%2e%2e//fallback.example",
     ]
   ) {
     assertThrows(() => resolveRedirectPath("/safe", fallback), /fallback/);
+  }
+});
+
+Deno.test("every emitted redirect stays same-origin after normalization", () => {
+  const values = [
+    "/",
+    "/account",
+    "/account?tab=security#password",
+    "/a/../account",
+    "/teams%2Fadmin",
+    "/%252e%252e/account",
+  ];
+  for (const origin of ["https://app.example", "http://localhost:8000"]) {
+    for (const value of values) {
+      const resolved = resolveRedirectPath(value, "/safe");
+      const parsed = new URL(resolved, origin);
+      assertEquals(parsed.origin, origin, `${origin} ${value} => ${resolved}`);
+      assert(
+        !resolved.startsWith("//"),
+        `network-path output: ${value} => ${resolved}`,
+      );
+    }
   }
 });
 

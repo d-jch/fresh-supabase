@@ -151,7 +151,7 @@ Deno.test("password auth installs server-first routes and security helpers", asy
       }),
     );
     assert(
-      securityOutput.includes("9 passed"),
+      securityOutput.includes("10 passed"),
       `security harness evidence missing:\n${securityOutput}`,
     );
 

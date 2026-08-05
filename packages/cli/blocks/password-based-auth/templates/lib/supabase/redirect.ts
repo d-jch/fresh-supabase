@@ -24,7 +24,9 @@ function normalizeInternalPath(value: string): string | null {
     if (
       parsed.origin !== REDIRECT_BASE.origin ||
       parsed.username !== "" ||
-      parsed.password !== ""
+      parsed.password !== "" ||
+      !parsed.pathname.startsWith("/") ||
+      parsed.pathname.startsWith("//")
     ) {
       return null;
     }
