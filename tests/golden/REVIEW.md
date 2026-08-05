@@ -21,6 +21,7 @@ block definitions, then record the reviewed Git commit below.
 
 ## Sign-off
 
-- Reviewed commit: pending
-- Reviewer: pending
-- Result: pending
+- Reviewed commit: `dc5aa623491e6e109117db8a9e6d10d2d70d42c2`
+- Reviewer: `d-jch`
+- Result: Approved
+- Reviewed on: 2026-08-05
