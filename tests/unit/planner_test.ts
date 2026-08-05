@@ -50,6 +50,94 @@ Deno.test("planner reports file conflicts before execution", async () => {
       ),
       "missing file conflict",
     );
+    assertEquals(plan.partialInstallation, true);
+  });
+});
+
+Deno.test("planner rejects an incompatible dependency alias", async () => {
+  await withTestProject({}, async (root) => {
+    const configPath = join(root, "deno.json");
+    const config = JSON.parse(await Deno.readTextFile(configPath));
+    config.imports["@supabase/supabase-js"] = "npm:some-other-package@1.0.0";
+    await Deno.writeTextFile(
+      configPath,
+      JSON.stringify(config, null, 2) + "\n",
+    );
+
+    const plan = await createInstallPlan(root, "supabase-client");
+    assert(
+      plan.issues.some((issue) =>
+        issue.kind === "conflict" &&
+        issue.message.includes("npm:some-other-package@1.0.0")
+      ),
+      "missing dependency alias conflict",
+    );
+    const dependency = plan.operations.find((planned) =>
+      planned.operation.kind === "dependency.ensure" &&
+      planned.operation.alias === "@supabase/supabase-js"
+    );
+    assertEquals(dependency?.state, "conflict");
+  });
+});
+
+Deno.test("planner detects a safe partial installation", async () => {
+  await withTestProject({}, async (root) => {
+    const configPath = join(root, "deno.json");
+    const config = JSON.parse(await Deno.readTextFile(configPath));
+    config.imports["@supabase/supabase-js"] =
+      "npm:@supabase/supabase-js@^2.112.0";
+    await Deno.writeTextFile(
+      configPath,
+      JSON.stringify(config, null, 2) + "\n",
+    );
+    await Deno.writeTextFile(
+      join(root, ".env.example"),
+      "FRESH_PUBLIC_SUPABASE_URL=https://existing.example.test\n",
+    );
+
+    const plan = await createInstallPlan(root, "supabase-client");
+    assertEquals(plan.issues, []);
+    assertEquals(plan.partialInstallation, true);
+    assertEquals(
+      plan.operations.filter((planned) => planned.state === "satisfied").length,
+      2,
+    );
+    assert(
+      plan.operations.some((planned) => planned.state === "pending"),
+      "missing pending operations",
+    );
+  });
+});
+
+Deno.test("planner inspects CSS content and ignores commented directives", async () => {
+  await withTestProject({ tailwind: true }, async (root) => {
+    await Deno.writeTextFile(
+      join(root, "assets", "styles.css"),
+      '@import "tailwindcss";\n/* @plugin "daisyui"; */\n',
+    );
+    const plan = await createInstallPlan(root, "daisyui");
+    const css = plan.operations.find((planned) =>
+      planned.operation.kind === "css.ensure"
+    );
+    assertEquals(css?.state, "pending");
+  });
+});
+
+Deno.test("planner rejects ambiguous duplicate environment entries", async () => {
+  await withTestProject({}, async (root) => {
+    await Deno.writeTextFile(
+      join(root, ".env.example"),
+      `FRESH_PUBLIC_SUPABASE_URL=https://one.example.test
+FRESH_PUBLIC_SUPABASE_URL=https://two.example.test
+`,
+    );
+    const plan = await createInstallPlan(root, "supabase-client");
+    assert(
+      plan.issues.some((issue) =>
+        issue.kind === "conflict" && issue.message.includes("duplicate")
+      ),
+      "missing duplicate environment conflict",
+    );
   });
 });
 

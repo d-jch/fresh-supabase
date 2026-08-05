@@ -65,6 +65,70 @@ export default defineConfig({ plugins: [] });
   });
 });
 
+Deno.test("does not accept a decoy plugins array", async () => {
+  await withTestProject({ tailwind: true }, async (root) => {
+    await Deno.writeTextFile(
+      join(root, "vite.config.ts"),
+      `import { defineConfig } from "vite";
+import { fresh } from "@fresh/plugin-vite";
+import tailwindcss from "@tailwindcss/vite";
+const decoy = { plugins: [fresh(), tailwindcss()] };
+export default defineConfig({ plugins: [] });
+`,
+    );
+
+    const project = await inspectProject(root);
+    assertEquals(project.capabilities.vite.status, "unverified");
+    assertEquals(project.capabilities.tailwind4.status, "unverified");
+  });
+});
+
+Deno.test("requires defineConfig to come from Vite", async () => {
+  await withTestProject({ tailwind: true }, async (root) => {
+    await Deno.writeTextFile(
+      join(root, "vite.config.ts"),
+      `import { fresh } from "@fresh/plugin-vite";
+import tailwindcss from "@tailwindcss/vite";
+const defineConfig = (value: unknown) => value;
+export default defineConfig({ plugins: [fresh(), tailwindcss()] });
+`,
+    );
+
+    const project = await inspectProject(root);
+    assertEquals(project.capabilities.vite.status, "unverified");
+    assertEquals(project.capabilities.tailwind4.status, "unverified");
+  });
+});
+
+Deno.test("does not accept plugin or CSS evidence in comments", async () => {
+  await withTestProject({ tailwind: true, daisyui: true }, async (root) => {
+    await Deno.writeTextFile(
+      join(root, "vite.config.ts"),
+      `import { defineConfig } from "vite";
+import { fresh } from "@fresh/plugin-vite";
+import tailwindcss from "@tailwindcss/vite";
+// const decoy = { plugins: [fresh(), tailwindcss()] };
+export default defineConfig({ plugins: [] });
+`,
+    );
+    await Deno.writeTextFile(
+      join(root, "assets", "styles.css"),
+      `/* @import "tailwindcss"; */
+/* @plugin "daisyui"; */
+`,
+    );
+    await Deno.writeTextFile(
+      join(root, "client.ts"),
+      '// import "./assets/styles.css";\n',
+    );
+
+    const project = await inspectProject(root);
+    assertEquals(project.capabilities.vite.status, "unverified");
+    assertEquals(project.capabilities.tailwind4.status, "unverified");
+    assertEquals(project.capabilities.daisyui.status, "unverified");
+  });
+});
+
 Deno.test("rejects ambiguous Deno config files", async () => {
   await withTestProject({}, async (root) => {
     await Deno.writeTextFile(join(root, "deno.jsonc"), "{}\n");

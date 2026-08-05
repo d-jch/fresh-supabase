@@ -117,4 +117,6 @@ Phase 2 executor decision.
 - Project inspection accepts exactly one of `deno.json` and `deno.jsonc` and
   parses JSONC comments and trailing commas without rewriting the file.
 - Dry-run output and issue ordering are deterministic and human-readable.
+- Every operation is classified as `pending`, `satisfied`, or `conflict`; mixed
+  existing/pending state is reported as a partial installation.
 - Rollback journal and manifest filenames remain Phase 2 decisions.

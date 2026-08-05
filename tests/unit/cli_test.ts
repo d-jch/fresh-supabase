@@ -126,6 +126,14 @@ Deno.test("add --dry-run prints a full plan and does not install", async () => {
     assert(result.stdout.includes("3. password-based-auth"), result.stdout);
     assert(result.stdout.includes("Preflight: PASS"), result.stdout);
     assert(result.stdout.includes("No files were changed."), result.stdout);
+
+    const repeated = await runCliIn(
+      root,
+      "add",
+      "password-based-auth",
+      "--dry-run",
+    );
+    assert(repeated.stdout === result.stdout, "dry-run output is not stable");
   });
 });
 

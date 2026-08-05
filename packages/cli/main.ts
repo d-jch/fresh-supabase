@@ -103,9 +103,19 @@ function formatPlan(plan: InstallPlan): string {
     ...plan.blocks.map((block, index) => `  ${index + 1}. ${block.name}`),
     "Operations:",
     ...plan.operations.map((planned) =>
-      `  - [${planned.block}] ${formatOperation(planned.operation)}`
+      `  - [${planned.state}] [${planned.block}] ${
+        formatOperation(planned.operation)
+      } — ${planned.detail}`
     ),
   ];
+
+  if (plan.partialInstallation) {
+    lines.push(
+      "Partial installation: detected (existing state and pending operations both found).",
+    );
+  } else {
+    lines.push("Partial installation: not detected.");
+  }
 
   if (plan.issues.length === 0) {
     lines.push("Preflight: PASS");
