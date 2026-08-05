@@ -465,11 +465,38 @@ function importedPluginIsRegistered(
   const plugins = exportedPluginArray(tokens);
   if (!plugins) return false;
 
+  const elements: TypeScriptToken[][] = [];
+  let current: TypeScriptToken[] = [];
+  let braces = 0;
+  let brackets = 0;
+  let parentheses = 0;
+  for (const token of plugins) {
+    if (
+      token.value === "," && braces === 0 && brackets === 0 &&
+      parentheses === 0
+    ) {
+      if (current.length > 0) elements.push(current);
+      current = [];
+      continue;
+    }
+    current.push(token);
+    if (token.value === "{") braces++;
+    if (token.value === "}") braces--;
+    if (token.value === "[") brackets++;
+    if (token.value === "]") brackets--;
+    if (token.value === "(") parentheses++;
+    if (token.value === ")") parentheses--;
+  }
+  if (current.length > 0) elements.push(current);
+
   return bindings.some((binding) =>
-    plugins.some((token, index) =>
-      token.kind === "identifier" && token.value === binding &&
-      plugins[index + 1]?.value === "("
-    )
+    elements.some((element) => {
+      if (
+        element[0]?.kind !== "identifier" ||
+        element[0].value !== binding || element[1]?.value !== "("
+      ) return false;
+      return matchingToken(element, 1, "(", ")") === element.length - 1;
+    })
   );
 }
 

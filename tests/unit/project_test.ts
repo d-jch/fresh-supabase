@@ -100,6 +100,25 @@ export default defineConfig({ plugins: [fresh(), tailwindcss()] });
   });
 });
 
+Deno.test("requires plugins to be direct array elements", async () => {
+  await withTestProject({ tailwind: true }, async (root) => {
+    await Deno.writeTextFile(
+      join(root, "vite.config.ts"),
+      `import { defineConfig } from "vite";
+import { fresh } from "@fresh/plugin-vite";
+import tailwindcss from "@tailwindcss/vite";
+export default defineConfig({
+  plugins: [false && fresh(), false && tailwindcss()],
+});
+`,
+    );
+
+    const project = await inspectProject(root);
+    assertEquals(project.capabilities.vite.status, "unverified");
+    assertEquals(project.capabilities.tailwind4.status, "unverified");
+  });
+});
+
 Deno.test("does not accept plugin or CSS evidence in comments", async () => {
   await withTestProject({ tailwind: true, daisyui: true }, async (root) => {
     await Deno.writeTextFile(
