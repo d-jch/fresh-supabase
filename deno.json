@@ -3,7 +3,7 @@
   "tasks": {
     "fmt": "deno fmt --check",
     "fmt:fix": "deno fmt",
-    "check": "deno check packages/cli/main.ts tests/unit/assert.ts tests/unit/block_test.ts tests/unit/cli_test.ts tests/unit/planner_test.ts tests/unit/project_test.ts tests/unit/test_project.ts",
-    "test": "deno test --allow-read --allow-write --allow-run tests/unit"
+    "check": "deno check packages/cli/main.ts tests/unit/assert.ts tests/unit/block_test.ts tests/unit/cli_test.ts tests/unit/executor_test.ts tests/unit/jsonc_edit_test.ts tests/unit/planner_test.ts tests/unit/project_test.ts tests/unit/test_project.ts tests/integration/base_blocks_test.ts",
+    "test": "deno test --allow-read --allow-write --allow-run tests/unit tests/integration"
   }
 }

@@ -1,11 +1,18 @@
 import type { BlockDefinition, BlockOperation, Capability } from "./block.ts";
 import { resolveBlockOrder } from "./catalog.ts";
+import {
+  InstallerStateError,
+  JOURNAL_PATH,
+  MANIFEST_PATH,
+  validateInstallerManifest,
+} from "./installer_state.ts";
 import { PathSecurityError, resolveContainedTarget } from "./paths.ts";
 import {
   inspectProject,
   type ProjectCapabilities,
   type ProjectInspection,
 } from "./project.ts";
+import { BlockTemplateError, loadBlockTemplate } from "./templates.ts";
 
 export type OperationState = "pending" | "satisfied" | "conflict";
 
@@ -143,9 +150,10 @@ function operationPath(operation: BlockOperation): string | null {
 
 async function inspectOperation(
   project: ProjectInspection,
-  block: string,
+  block: BlockDefinition,
   operation: BlockOperation,
 ): Promise<{ planned: PlannedOperation; issue?: PlanIssue }> {
+  const blockName = block.name;
   if (operation.kind === "dependency.ensure") {
     const rawImports = isRecord(project.config.imports)
       ? project.config.imports
@@ -153,7 +161,7 @@ async function inspectOperation(
     if (!Object.hasOwn(rawImports, operation.alias)) {
       return {
         planned: {
-          block,
+          block: blockName,
           operation,
           state: "pending",
           detail: "dependency alias is absent",
@@ -164,7 +172,7 @@ async function inspectOperation(
     if (existing === operation.specifier) {
       return {
         planned: {
-          block,
+          block: blockName,
           operation,
           state: "satisfied",
           detail: "exact dependency specifier is already configured",
@@ -175,8 +183,8 @@ async function inspectOperation(
       typeof existing === "string" ? existing : "a non-string value"
     }`;
     return {
-      planned: { block, operation, state: "conflict", detail },
-      issue: { kind: "conflict", block, message: detail },
+      planned: { block: blockName, operation, state: "conflict", detail },
+      issue: { kind: "conflict", block: blockName, message: detail },
     };
   }
 
@@ -188,12 +196,12 @@ async function inspectOperation(
     if (!(error instanceof PathSecurityError)) throw error;
     return {
       planned: {
-        block,
+        block: blockName,
         operation,
         state: "conflict",
         detail: error.message,
       },
-      issue: { kind: "path", block, message: error.message },
+      issue: { kind: "path", block: blockName, message: error.message },
     };
   }
 
@@ -203,8 +211,8 @@ async function inspectOperation(
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     return {
-      planned: { block, operation, state: "conflict", detail },
-      issue: { kind: "conflict", block, message: detail },
+      planned: { block: blockName, operation, state: "conflict", detail },
+      issue: { kind: "conflict", block: blockName, message: detail },
     };
   }
 
@@ -212,17 +220,32 @@ async function inspectOperation(
     if (!file.exists) {
       return {
         planned: {
-          block,
+          block: blockName,
           operation,
           state: "pending",
           detail: "target file is absent",
         },
       };
     }
-    const detail = `${path} already exists`;
+    try {
+      const expected = await loadBlockTemplate(block, operation.template);
+      if (file.content === expected) {
+        return {
+          planned: {
+            block: blockName,
+            operation,
+            state: "satisfied",
+            detail: "target file exactly matches the embedded template",
+          },
+        };
+      }
+    } catch (error) {
+      if (!(error instanceof BlockTemplateError)) throw error;
+    }
+    const detail = `${path} already exists with different content`;
     return {
-      planned: { block, operation, state: "conflict", detail },
-      issue: { kind: "conflict", block, message: detail },
+      planned: { block: blockName, operation, state: "conflict", detail },
+      issue: { kind: "conflict", block: blockName, message: detail },
     };
   }
 
@@ -230,7 +253,7 @@ async function inspectOperation(
     if (!file.exists) {
       return {
         planned: {
-          block,
+          block: blockName,
           operation,
           state: "pending",
           detail: "environment example file is absent",
@@ -241,7 +264,7 @@ async function inspectOperation(
     if (count === 0) {
       return {
         planned: {
-          block,
+          block: blockName,
           operation,
           state: "pending",
           detail: "environment entry is absent",
@@ -251,7 +274,7 @@ async function inspectOperation(
     if (count === 1) {
       return {
         planned: {
-          block,
+          block: blockName,
           operation,
           state: "satisfied",
           detail:
@@ -261,15 +284,15 @@ async function inspectOperation(
     }
     const detail = `${path} contains duplicate ${operation.name} entries`;
     return {
-      planned: { block, operation, state: "conflict", detail },
-      issue: { kind: "conflict", block, message: detail },
+      planned: { block: blockName, operation, state: "conflict", detail },
+      issue: { kind: "conflict", block: blockName, message: detail },
     };
   }
 
   if (!file.exists) {
     return {
       planned: {
-        block,
+        block: blockName,
         operation,
         state: "pending",
         detail: "stylesheet is absent",
@@ -279,14 +302,14 @@ async function inspectOperation(
   if (stripCssComments(file.content) === null) {
     const detail = `${path} contains an unterminated CSS comment`;
     return {
-      planned: { block, operation, state: "conflict", detail },
-      issue: { kind: "conflict", block, message: detail },
+      planned: { block: blockName, operation, state: "conflict", detail },
+      issue: { kind: "conflict", block: blockName, message: detail },
     };
   }
   return cssStatementPresent(file.content, operation.statement)
     ? {
       planned: {
-        block,
+        block: blockName,
         operation,
         state: "satisfied",
         detail: "CSS statement is already configured",
@@ -294,12 +317,56 @@ async function inspectOperation(
     }
     : {
       planned: {
-        block,
+        block: blockName,
         operation,
         state: "pending",
         detail: "CSS statement is absent",
       },
     };
+}
+
+async function inspectInstallerState(
+  project: ProjectInspection,
+  requested: string,
+): Promise<PlanIssue[]> {
+  const issues: PlanIssue[] = [];
+  for (const path of [JOURNAL_PATH, MANIFEST_PATH]) {
+    const target = await resolveContainedTarget(project.root, path);
+    let file: Awaited<ReturnType<typeof regularFileContent>>;
+    try {
+      file = await regularFileContent(target, path);
+    } catch (error) {
+      issues.push({
+        kind: "conflict",
+        block: requested,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      continue;
+    }
+    if (!file.exists) continue;
+    if (path === JOURNAL_PATH) {
+      issues.push({
+        kind: "conflict",
+        block: requested,
+        message:
+          `${JOURNAL_PATH} records an interrupted installation; a non-dry-run add must recover it first`,
+      });
+      continue;
+    }
+    try {
+      validateInstallerManifest(JSON.parse(file.content));
+    } catch (error) {
+      const detail = error instanceof SyntaxError
+        ? "installer manifest is not valid JSON"
+        : error instanceof InstallerStateError
+        ? error.message
+        : error instanceof Error
+        ? error.message
+        : String(error);
+      issues.push({ kind: "conflict", block: requested, message: detail });
+    }
+  }
+  return issues;
 }
 
 export async function createInstallPlan(
@@ -326,11 +393,13 @@ export async function createInstallPlan(
   const operations: PlannedOperation[] = [];
   for (const block of blocks) {
     for (const operation of block.operations) {
-      const inspected = await inspectOperation(project, block.name, operation);
+      const inspected = await inspectOperation(project, block, operation);
       operations.push(inspected.planned);
       if (inspected.issue) issues.push(inspected.issue);
     }
   }
+
+  issues.push(...await inspectInstallerState(project, requested));
 
   const partialInstallation =
     operations.some((planned) => planned.state !== "pending") &&

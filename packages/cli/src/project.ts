@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { duplicateJsoncImportKeys, JsoncEditError } from "./jsonc_edit.ts";
 
 export type CapabilityStatus = "ok" | "missing" | "unsupported" | "unverified";
 
@@ -618,6 +619,23 @@ export async function inspectProject(
 
   if (!isRecord(parsed)) {
     throw new ProjectInspectionError("Deno config must contain a JSON object");
+  }
+
+  try {
+    const duplicates = duplicateJsoncImportKeys(rawConfig);
+    if (duplicates.length > 0) {
+      throw new ProjectInspectionError(
+        `Deno config imports contains duplicate keys: ${duplicates.join(", ")}`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof ProjectInspectionError) throw error;
+    if (error instanceof JsoncEditError) {
+      throw new ProjectInspectionError(
+        `could not inspect Deno config imports: ${error.message}`,
+      );
+    }
+    throw error;
   }
 
   const imports = collectImports(parsed);

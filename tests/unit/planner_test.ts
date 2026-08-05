@@ -46,7 +46,8 @@ Deno.test("planner reports file conflicts before execution", async () => {
     assert(
       plan.issues.some((issue) =>
         issue.kind === "conflict" &&
-        issue.message === "lib/supabase/client.ts already exists"
+        issue.message ===
+          "lib/supabase/client.ts already exists with different content"
       ),
       "missing file conflict",
     );

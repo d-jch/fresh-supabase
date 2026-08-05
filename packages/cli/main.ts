@@ -1,5 +1,12 @@
 import type { BlockDefinition, BlockOperation } from "./src/block.ts";
 import { getBlock, listBlocks } from "./src/catalog.ts";
+import {
+  createExecutablePlan,
+  executeInstallPlan,
+  InstallExecutionError,
+  MANIFEST_PATH,
+  recoverInterruptedInstall,
+} from "./src/executor.ts";
 import { createInstallPlan, type InstallPlan } from "./src/planner.ts";
 import {
   inspectProject,
@@ -17,6 +24,7 @@ Usage:
   fresh-supabase doctor
   fresh-supabase list
   fresh-supabase view <block>
+  fresh-supabase add <block>
   fresh-supabase add <block> --dry-run
   fresh-supabase --help
   fresh-supabase --version
@@ -25,14 +33,15 @@ Commands:
   doctor                   Inspect Fresh, Vite, Tailwind, and daisyUI capabilities
   list                     List embedded blocks
   view <block>             Show one block definition
+  add <block>              Preflight and install an embedded block
   add <block> --dry-run    Preflight and print a deterministic installation plan
 
 Options:
   --help       Show this help message
   --version    Print the CLI version
 
-Phase 1 plans installations but does not write project files.
-The add command without --dry-run is intentionally disabled until Phase 2.`;
+All preflight checks finish before installation writes begin.
+Dry runs do not change files, dependencies, lockfiles, or installer state.`;
 
 export interface CliIo {
   stdout(message: string): void;
@@ -95,9 +104,9 @@ function formatBlock(block: BlockDefinition): string {
   ].join("\n");
 }
 
-function formatPlan(plan: InstallPlan): string {
+function formatPlan(plan: InstallPlan, dryRun = true): string {
   const lines = [
-    `Dry run: ${plan.requested}`,
+    `${dryRun ? "Dry run" : "Install plan"}: ${plan.requested}`,
     `Config: ${plan.project.configPath}`,
     "Blocks:",
     ...plan.blocks.map((block, index) => `  ${index + 1}. ${block.name}`),
@@ -127,7 +136,11 @@ function formatPlan(plan: InstallPlan): string {
       ),
     );
   }
-  lines.push("No files were changed.");
+  lines.push(
+    dryRun
+      ? "No files were changed."
+      : "Preflight failed before any installer write.",
+  );
   return lines.join("\n");
 }
 
@@ -186,10 +199,26 @@ export async function runCli(
 
       case "add": {
         if (rest.length === 1 && getBlock(rest[0])) {
-          return usageError(
-            "Phase 1 does not execute installations. Re-run with --dry-run.",
-            io,
+          const recovered = await recoverInterruptedInstall(cwd);
+          const executable = await createExecutablePlan(cwd, rest[0], VERSION);
+          if (executable.installPlan.issues.length > 0) {
+            io.stdout(formatPlan(executable.installPlan, false));
+            return 1;
+          }
+          const result = await executeInstallPlan(executable);
+          io.stdout(
+            (recovered
+              ? "Recovered an interrupted installer transaction.\n"
+              : "") +
+              (result.changed
+                ? `Installed ${
+                  rest[0]
+                } with ${result.mutationCount} file mutation(s).\nManifest: ${MANIFEST_PATH}`
+                : `${
+                  rest[0]
+                } is already installed; no files changed.\nManifest: ${MANIFEST_PATH}`),
           );
+          return 0;
         }
         if (rest.length !== 2 || rest[1] !== "--dry-run") {
           return usageError(
@@ -214,6 +243,10 @@ export async function runCli(
   } catch (error) {
     if (error instanceof ProjectInspectionError) {
       io.stderr(`Project inspection failed: ${error.message}`);
+      return 1;
+    }
+    if (error instanceof InstallExecutionError) {
+      io.stderr(`Installation failed: ${error.message}`);
       return 1;
     }
     throw error;

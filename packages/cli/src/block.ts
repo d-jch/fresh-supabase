@@ -146,6 +146,16 @@ function validateOperation(value: unknown, index: number): BlockOperation {
           `${label}.specifier must be an explicit jsr: or npm: specifier`,
         );
       }
+      if (/[\u0000-\u001f\u007f]/.test(alias)) {
+        throw new BlockFormatError(
+          `${label}.alias contains control characters`,
+        );
+      }
+      if (/\s|[\u0000-\u001f\u007f]/.test(specifier)) {
+        throw new BlockFormatError(
+          `${label}.specifier contains whitespace or control characters`,
+        );
+      }
       return { kind, alias, specifier };
     }
     case "env.ensure": {
@@ -160,23 +170,39 @@ function validateOperation(value: unknown, index: number): BlockOperation {
           `${label}.name is not a valid environment name`,
         );
       }
+      const placeholder = requireString(
+        operation.placeholder,
+        `${label}.placeholder`,
+      );
+      if (/[\r\n\u0000]/.test(placeholder)) {
+        throw new BlockFormatError(
+          `${label}.placeholder must be a single safe line`,
+        );
+      }
       return {
         kind,
         path: validateBlockPath(operation.path, `${label}.path`),
         name,
-        placeholder: requireString(
-          operation.placeholder,
-          `${label}.placeholder`,
-        ),
+        placeholder,
       };
     }
-    case "css.ensure":
+    case "css.ensure": {
       rejectUnknownKeys(operation, ["kind", "path", "statement"], label);
+      const statement = requireString(
+        operation.statement,
+        `${label}.statement`,
+      );
+      if (/[\r\n\u0000]/.test(statement)) {
+        throw new BlockFormatError(
+          `${label}.statement must be a single safe line`,
+        );
+      }
       return {
         kind,
         path: validateBlockPath(operation.path, `${label}.path`),
-        statement: requireString(operation.statement, `${label}.statement`),
+        statement,
       };
+    }
     default:
       throw new BlockFormatError(`${label}.kind is not supported: ${kind}`);
   }

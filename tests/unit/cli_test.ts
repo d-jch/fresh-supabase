@@ -17,7 +17,14 @@ async function runCliIn(
   ...args: string[]
 ): Promise<CliResult> {
   const command = new Deno.Command(Deno.execPath(), {
-    args: ["run", "--quiet", "--allow-read", cliUrl.href, ...args],
+    args: [
+      "run",
+      "--quiet",
+      "--allow-read",
+      "--allow-write",
+      cliUrl.href,
+      ...args,
+    ],
     cwd,
     stdout: "piped",
     stderr: "piped",
@@ -35,7 +42,7 @@ function runCli(...args: string[]): Promise<CliResult> {
   return runCliIn(undefined, ...args);
 }
 
-Deno.test("--help prints the Phase 1 CLI contract", async () => {
+Deno.test("--help prints the CLI contract", async () => {
   const result = await runCli("--help");
 
   assert(result.code === 0, `expected exit code 0, got ${result.code}`);
@@ -46,7 +53,10 @@ Deno.test("--help prints the Phase 1 CLI contract", async () => {
   for (const command of ["doctor", "list", "view", "add", "--dry-run"]) {
     assert(result.stdout.includes(command), `missing ${command} command`);
   }
-  assert(result.stdout.includes("Phase 1 plans"), "missing Phase 1 notice");
+  assert(
+    result.stdout.includes("preflight checks finish"),
+    "missing preflight notice",
+  );
 });
 
 Deno.test("no arguments prints help", async () => {
@@ -137,13 +147,18 @@ Deno.test("add --dry-run prints a full plan and does not install", async () => {
   });
 });
 
-Deno.test("add without --dry-run is disabled in Phase 1", async () => {
-  const result = await runCli("add", "supabase-client");
+Deno.test("add installs a base block and a repeat is unchanged", async () => {
+  await withTestProject({}, async (root) => {
+    const installed = await runCliIn(root, "add", "supabase-client");
+    assert(installed.code === 0, installed.stderr + installed.stdout);
+    assert(
+      installed.stdout.includes("Installed supabase-client"),
+      installed.stdout,
+    );
+    assert(installed.stdout.includes("manifest.json"), installed.stdout);
 
-  assert(result.code === 1, `expected exit code 1, got ${result.code}`);
-  assert(result.stdout === "", `expected empty stdout, got ${result.stdout}`);
-  assert(
-    result.stderr.includes("does not execute installations"),
-    result.stderr,
-  );
+    const repeated = await runCliIn(root, "add", "supabase-client");
+    assert(repeated.code === 0, repeated.stderr + repeated.stdout);
+    assert(repeated.stdout.includes("already installed"), repeated.stdout);
+  });
 });

@@ -107,3 +107,36 @@ Deno.test("block validation rejects unknown metadata fields", () => {
   }
   throw new Error("expected unknown block field to be rejected");
 });
+
+Deno.test("block validation rejects multiline env and CSS payloads", () => {
+  for (
+    const operation of [{
+      kind: "env.ensure",
+      path: ".env.example",
+      name: "SAFE_NAME",
+      placeholder: "safe\nINJECTED=value",
+    }, {
+      kind: "css.ensure",
+      path: "assets/styles.css",
+      statement: '@plugin "daisyui";\n@import "unexpected";',
+    }]
+  ) {
+    const invalid = {
+      schemaVersion: 1,
+      name: "unsafe",
+      version: "0.1.0",
+      description: "unsafe test block",
+      dependencies: [],
+      requirements: ["fresh-2"],
+      operations: [operation],
+    };
+    try {
+      validateBlockDefinition(invalid);
+    } catch (error) {
+      assert(error instanceof BlockFormatError, "expected BlockFormatError");
+      assert(error.message.includes("single safe line"), error.message);
+      continue;
+    }
+    throw new Error("expected multiline block payload to be rejected");
+  }
+});

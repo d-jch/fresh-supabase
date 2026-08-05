@@ -157,3 +157,39 @@ Deno.test("rejects ambiguous Deno config files", async () => {
     );
   });
 });
+
+Deno.test("rejects duplicate import-map keys before planning", async () => {
+  await withTestProject({ jsonc: true }, async (root) => {
+    const path = join(root, "deno.jsonc");
+    const source = await Deno.readTextFile(path);
+    await Deno.writeTextFile(
+      path,
+      source.replace(
+        '"fresh": "jsr:@fresh/core@^2.3.3",',
+        '"fresh": "jsr:@fresh/core@^2.3.3",\n    "fresh": "jsr:@fresh/core@^2.0.0",',
+      ),
+    );
+    await assertRejects(
+      () => inspectProject(root),
+      "imports contains duplicate keys: fresh",
+    );
+  });
+});
+
+Deno.test("rejects duplicate root imports properties even with mixed values", async () => {
+  await withTestProject({}, async (root) => {
+    const path = join(root, "deno.json");
+    const source = await Deno.readTextFile(path);
+    await Deno.writeTextFile(
+      path,
+      source.replace(
+        '"imports": {',
+        '"imports": "decoy",\n  "imports": {',
+      ),
+    );
+    await assertRejects(
+      () => inspectProject(root),
+      "duplicate imports objects",
+    );
+  });
+});

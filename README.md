@@ -7,13 +7,13 @@ the Supabase capabilities they need:
 ```bash
 deno create jsr:@fresh/init my-app
 cd my-app
-deno x -A jsr:@fresh-supabase/cli add password-based-auth
+deno x -RW jsr:@fresh-supabase/cli add supabase-client
 ```
 
-The repository is currently at **Phase 1**. It contains the frozen v0.1
-architecture, a validated embedded block catalog, project-capability inspection,
-and a deterministic read-only installation planner. Filesystem mutation and the
-application example are intentionally deferred to later phases.
+The repository is currently at **Phase 2**. In addition to the frozen planner,
+it contains a stale-plan-resistant executor, recovery journal, audit manifest,
+and the `daisyui` and `supabase-client` block payloads. Password authentication
+and the generated application example remain later phases.
 
 ## Planned v0.1 surface
 
@@ -34,8 +34,9 @@ deno run packages/cli/main.ts --help
 deno run packages/cli/main.ts --version
 deno run packages/cli/main.ts list
 deno run packages/cli/main.ts view supabase-client
-deno run packages/cli/main.ts doctor
-deno run packages/cli/main.ts add supabase-client --dry-run
+deno run --allow-read packages/cli/main.ts doctor
+deno run --allow-read packages/cli/main.ts add supabase-client --dry-run
+deno run --allow-read --allow-write packages/cli/main.ts add supabase-client
 deno task fmt
 deno task check
 deno task test
@@ -50,8 +51,8 @@ Architecture and review gates are defined in:
 ## Repository layout
 
 ```text
-packages/cli/              JSR CLI package, catalog, and planner
-packages/cli/blocks/       package-local embedded block definitions
+packages/cli/              JSR CLI package, planner, and recoverable executor
+packages/cli/blocks/       package-local embedded definitions and templates
 blocks/                    block authoring and provenance documentation
 tests/fixtures/upstream/   pinned official Fresh initializer outputs
 tests/fixtures/mutated/    deliberate existing-project edge cases
