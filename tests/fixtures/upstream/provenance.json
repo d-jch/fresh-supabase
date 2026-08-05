@@ -13,7 +13,7 @@
     "sha256": "ceefc31bd51194e03c78f9d35f9ca4d8b474b01280f83cd1490fb96a87c0dd12"
   },
   "generation": {
-    "command": "deno run --allow-env --allow-net=jsr.io,raw.githubusercontent.com --allow-read --allow-write scripts/generate_upstream_fixtures.ts",
+    "command": "deno run --no-config --no-lock --allow-env --allow-net=jsr.io,raw.githubusercontent.com --allow-read --allow-write scripts/generate_upstream_fixtures.ts",
     "dependencyInstallSkipped": true,
     "latestResolutionDisabled": true
   },

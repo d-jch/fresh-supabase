@@ -114,8 +114,18 @@ Deno.test("committed fixtures are pinned and match their provenance", async () =
     HashProvenance & {
       denoVersion: string;
       freshVersion: string;
-      initializer: { package: string; commit: string; module: string };
-      generation: { latestResolutionDisabled: boolean };
+      initializer: {
+        package: string;
+        commit: string;
+        module: string;
+        moduleSha256: string;
+      };
+      pinnedFavicon: { source: string; sha256: string };
+      generation: {
+        command: string;
+        dependencyInstallSkipped: boolean;
+        latestResolutionDisabled: boolean;
+      };
     }
   >(join(UPSTREAM_ROOT, "provenance.json"));
   assertEquals(upstream.denoVersion, "2.9.3");
@@ -125,7 +135,27 @@ Deno.test("committed fixtures are pinned and match their provenance", async () =
     upstream.initializer.commit,
     "39b5f06f8a7d7fa02dd2e2950f2291d04ef9fea7",
   );
-  assert(upstream.initializer.module.includes("/2.3.3/"));
+  assertEquals(
+    upstream.initializer.module,
+    "https://jsr.io/@fresh/init/2.3.3/src/init.ts",
+  );
+  assertEquals(
+    upstream.initializer.moduleSha256,
+    "38b132e97fb71953d1304f975a21d9ca14436926513585e5e403f4c723dc2848",
+  );
+  assertEquals(
+    upstream.pinnedFavicon.source,
+    "https://raw.githubusercontent.com/denoland/fresh/2.3.3/packages/init/src/assets/favicon.ico",
+  );
+  assertEquals(
+    upstream.pinnedFavicon.sha256,
+    "ceefc31bd51194e03c78f9d35f9ca4d8b474b01280f83cd1490fb96a87c0dd12",
+  );
+  assertEquals(
+    upstream.generation.command,
+    "deno run --no-config --no-lock --allow-env --allow-net=jsr.io,raw.githubusercontent.com --allow-read --allow-write scripts/generate_upstream_fixtures.ts",
+  );
+  assertEquals(upstream.generation.dependencyInstallSkipped, true);
   assertEquals(upstream.generation.latestResolutionDisabled, true);
   await verifyHashProvenance(UPSTREAM_ROOT, upstream);
 
