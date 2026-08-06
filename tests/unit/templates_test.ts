@@ -6,7 +6,7 @@ import {
 } from "../../packages/cli/src/templates.ts";
 import { assert, assertEquals, assertRejects } from "./assert.ts";
 
-Deno.test("every declared file template is embedded", () => {
+Deno.test("every declared file template is embedded", async () => {
   const declared = listBlocks().flatMap((block) =>
     block.operations.flatMap((operation) =>
       operation.kind === "file.create"
@@ -16,6 +16,22 @@ Deno.test("every declared file template is embedded", () => {
   ).sort();
 
   assertEquals(listEmbeddedTemplateKeys(), declared);
+  for (const block of listBlocks()) {
+    for (const operation of block.operations) {
+      if (operation.kind !== "file.create") continue;
+      const source = await Deno.readTextFile(
+        new URL(
+          `../../packages/cli/blocks/${block.name}/${operation.template}`,
+          import.meta.url,
+        ),
+      );
+      assertEquals(
+        await loadBlockTemplate(block, operation.template),
+        source,
+        `${block.name}/${operation.template} differs from its source template`,
+      );
+    }
+  }
 });
 
 Deno.test("embedded templates load without runtime filesystem access", async () => {

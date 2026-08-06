@@ -44,6 +44,7 @@ deno run packages/cli/main.ts view supabase-client
 deno run --allow-read packages/cli/main.ts doctor
 deno run --allow-read packages/cli/main.ts add supabase-client --dry-run
 deno run --allow-read --allow-write packages/cli/main.ts add supabase-client
+deno task embed # after editing a block template
 deno task fmt
 deno task check
 deno task test
