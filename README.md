@@ -10,11 +10,12 @@ cd my-app
 deno run --allow-read --allow-write jsr:@fresh-supabase/cli add supabase-client
 ```
 
-The v0.1 implementation is a release candidate. It includes the frozen planner,
-stale-plan-resistant executor, recovery journal, audit manifest, all three
-embedded blocks, pinned Fresh fixtures, human-reviewable golden projects, and a
-complete generated example. Publishing waits for the final acceptance and review
-gates in `docs/v0.1-acceptance-matrix.md`.
+Version 0.1.0 is published on JSR as
+[`@fresh-supabase/cli`](https://jsr.io/@fresh-supabase/cli@0.1.0). It includes
+the frozen planner, stale-plan-resistant executor, recovery journal, audit
+manifest, all three embedded blocks, pinned Fresh fixtures, human-reviewed
+golden projects, and a complete generated example. The acceptance and review
+evidence is recorded in `docs/v0.1-acceptance-matrix.md`.
 
 ## v0.1 surface
 
