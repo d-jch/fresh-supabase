@@ -5,7 +5,7 @@
   "tasks": {
     "fmt": "deno fmt --check",
     "fmt:fix": "deno fmt",
-    "check": "deno check packages/cli/main.ts scripts/generate_upstream_fixtures.ts scripts/generate_mutated_fixtures.ts scripts/generate_golden_and_example.ts tests/unit/assert.ts tests/unit/block_test.ts tests/unit/cli_test.ts tests/unit/executor_test.ts tests/unit/jsonc_edit_test.ts tests/unit/planner_test.ts tests/unit/project_test.ts tests/unit/test_project.ts tests/integration/base_blocks_test.ts tests/integration/password_auth_test.ts tests/integration/fixtures_e2e_test.ts tests/integration/harnesses/password_auth_security_harness.ts tests/integration/harnesses/password_auth_smoke_harness.ts",
-    "test": "deno test --allow-read --allow-write --allow-run tests/unit tests/integration"
+    "check": "deno check packages/cli/main.ts scripts/generate_upstream_fixtures.ts scripts/generate_mutated_fixtures.ts scripts/generate_golden_and_example.ts tests/unit/assert.ts tests/unit/block_test.ts tests/unit/cli_test.ts tests/unit/executor_test.ts tests/unit/jsonc_edit_test.ts tests/unit/planner_test.ts tests/unit/project_test.ts tests/unit/templates_test.ts tests/unit/test_project.ts tests/integration/base_blocks_test.ts tests/integration/password_auth_test.ts tests/integration/fixtures_e2e_test.ts tests/integration/remote_package_test.ts tests/integration/harnesses/password_auth_security_harness.ts tests/integration/harnesses/password_auth_smoke_harness.ts",
+    "test": "deno test --allow-read --allow-write --allow-run --allow-net=127.0.0.1 tests/unit tests/integration"
   }
 }

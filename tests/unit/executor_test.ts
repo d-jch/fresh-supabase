@@ -6,12 +6,10 @@ import {
   MANIFEST_PATH,
   recoverInterruptedInstall,
 } from "../../packages/cli/src/executor.ts";
-import { runCli } from "../../packages/cli/main.ts";
+import { runCli, VERSION } from "../../packages/cli/main.ts";
 import { createInstallPlan } from "../../packages/cli/src/planner.ts";
 import { assert, assertEquals, assertRejects } from "./assert.ts";
 import { snapshotProject, withTestProject } from "./test_project.ts";
-
-const VERSION = "0.1.0";
 
 async function writeJournal(
   root: string,

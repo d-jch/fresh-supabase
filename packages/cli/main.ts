@@ -14,11 +14,11 @@ import {
   ProjectInspectionError,
 } from "./src/project.ts";
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.1.1";
 
 const HELP = `fresh-supabase ${VERSION}
 
-Incremental Supabase blocks for Deno Fresh 2 projects.
+Copy project-owned Supabase blocks into an existing Deno Fresh 2 project.
 
 Usage:
   fresh-supabase doctor
@@ -41,7 +41,8 @@ Options:
   --version    Print the CLI version
 
 All preflight checks finish before installation writes begin.
-Dry runs do not change files, dependencies, lockfiles, or installer state.`;
+Dry runs do not change files, dependencies, lockfiles, or installer state.
+Generated projects do not depend on this CLI at runtime.`;
 
 export interface CliIo {
   stdout(message: string): void;

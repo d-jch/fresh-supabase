@@ -1,21 +1,26 @@
 # fresh-supabase
 
 `fresh-supabase` is an incremental, local block installer for Deno Fresh 2
-projects. Start with the official Fresh initializer, then add only the Supabase
-capabilities the application needs:
+projects. Start with the official Fresh initializer, preview the block, then
+copy only the Supabase source and configuration the application needs:
 
 ```bash
 deno run -Ar jsr:@fresh/init my-app
 cd my-app
-deno run --allow-read --allow-write jsr:@fresh-supabase/cli add supabase-client
+deno run --no-config --no-lock --allow-read jsr:@fresh-supabase/cli@0.1.1 add supabase-client --dry-run
+deno run --no-config --no-lock --allow-read --allow-write jsr:@fresh-supabase/cli@0.1.1 add supabase-client
 ```
 
-Version 0.1.0 is published on JSR as
-[`@fresh-supabase/cli`](https://jsr.io/@fresh-supabase/cli@0.1.0). It includes
-the frozen planner, stale-plan-resistant executor, recovery journal, audit
-manifest, all three embedded blocks, pinned Fresh fixtures, human-reviewed
-golden projects, and a complete generated example. The acceptance and review
-evidence is recorded in `docs/v0.1-acceptance-matrix.md`.
+The CLI copies project-owned files and does not become an application runtime
+dependency. Do not use `deno add` or import it from generated application code.
+
+Version 0.1.1 is the corrective release candidate for
+[`@fresh-supabase/cli`](https://jsr.io/@fresh-supabase/cli). It includes the
+frozen planner, stale-plan-resistant executor, recovery journal, audit manifest,
+all three embedded blocks, pinned Fresh fixtures, human-reviewed golden
+projects, a complete generated example, and remote-package installation
+coverage. The v0.1 acceptance and review evidence is recorded in
+`docs/v0.1-acceptance-matrix.md`.
 
 ## v0.1 surface
 
