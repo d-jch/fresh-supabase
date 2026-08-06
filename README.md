@@ -14,11 +14,11 @@ deno run --no-config --no-lock --allow-read --allow-write jsr:@fresh-supabase/cl
 The CLI copies project-owned files and does not become an application runtime
 dependency. Do not use `deno add` or import it from generated application code.
 
-Version 0.1.1 is the corrective release candidate for
-[`@fresh-supabase/cli`](https://jsr.io/@fresh-supabase/cli). It includes the
-frozen planner, stale-plan-resistant executor, recovery journal, audit manifest,
-all three embedded blocks, pinned Fresh fixtures, human-reviewed golden
-projects, a complete generated example, and remote-package installation
+Version 0.1.1 is the published corrective release of
+[`@fresh-supabase/cli`](https://jsr.io/@fresh-supabase/cli@0.1.1). It includes
+the frozen planner, stale-plan-resistant executor, recovery journal, audit
+manifest, all three embedded blocks, pinned Fresh fixtures, human-reviewed
+golden projects, a complete generated example, and remote-package installation
 coverage. The v0.1 acceptance and review evidence is recorded in
 `docs/v0.1-acceptance-matrix.md`.
 
