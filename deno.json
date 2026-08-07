@@ -1,4 +1,5 @@
 {
+  "lock": false,
   "fmt": {
     "exclude": ["tests/fixtures", "tests/golden"]
   },

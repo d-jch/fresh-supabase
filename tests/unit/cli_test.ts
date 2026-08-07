@@ -74,6 +74,7 @@ Deno.test("--version prints the package version", async () => {
     VERSION === cliConfig.version,
     `CLI version ${VERSION} does not match package version ${cliConfig.version}`,
   );
+  assert(cliConfig.lock === false, "published CLI must not create a lockfile");
   assert(result.code === 0, `expected exit code 0, got ${result.code}`);
   assert(result.stderr === "", `expected empty stderr, got ${result.stderr}`);
   assert(

@@ -2,6 +2,7 @@
   "name": "@fresh-supabase/cli",
   "version": "0.2.0",
   "license": "MIT",
+  "lock": false,
   "exports": "./main.ts",
   "publish": {
     "include": [
