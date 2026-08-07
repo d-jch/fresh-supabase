@@ -583,12 +583,15 @@ function inspectFreshRouteDirectory(source: string): CapabilityResult {
     );
   }
 
-  const routeDirectories: string[] = [];
+  const optionValues = new Map<string, string[]>([
+    ["routeDir", []],
+    ["serverEntry", []],
+  ]);
   for (const property of topLevelElements(args.slice(1, -1))) {
     if (property[0]?.value === "...") {
       return result(
         "unverified",
-        "fresh() options use a spread that may override routeDir",
+        "fresh() options use a spread that may override routeDir or serverEntry",
       );
     }
 
@@ -602,7 +605,7 @@ function inspectFreshRouteDirectory(source: string): CapabilityResult {
       ) {
         return result(
           "unverified",
-          "fresh() options use a dynamic computed property that may override routeDir",
+          "fresh() options use a dynamic computed property that may override routeDir or serverEntry",
         );
       }
       key = property[1];
@@ -611,52 +614,126 @@ function inspectFreshRouteDirectory(source: string): CapabilityResult {
       key = property[0];
       if (
         ["get", "set", "async"].includes(key?.value ?? "") &&
-        property[1]?.value === "routeDir"
+        optionValues.has(property[1]?.value ?? "")
       ) {
         return result(
           "unverified",
-          "routeDir is not a static string property",
+          `${property[1].value} is not a static string property`,
         );
       }
     }
 
     if (
-      key?.value !== "routeDir" ||
+      !optionValues.has(key?.value ?? "") ||
       (key.kind !== "identifier" && key.kind !== "string")
     ) continue;
     if (property[colonIndex]?.value !== ":") {
-      return result("unverified", "routeDir is not a static string property");
+      return result(
+        "unverified",
+        `${key.value} is not a static string property`,
+      );
     }
     const value = property[colonIndex + 1];
     if (
       value?.kind !== "string" || property.length !== colonIndex + 2
     ) {
-      return result("unverified", "routeDir is not a static string property");
+      return result(
+        "unverified",
+        `${key.value} is not a static string property`,
+      );
     }
-    routeDirectories.push(value.value);
+    optionValues.get(key.value)!.push(value.value);
   }
 
-  if (routeDirectories.length > 1) {
+  for (const [name, values] of optionValues) {
+    if (values.length > 1) {
+      return result(
+        "unverified",
+        `fresh() options contain duplicate ${name} properties`,
+      );
+    }
+  }
+  const serverEntry = optionValues.get("serverEntry")![0];
+  if (
+    serverEntry !== undefined && serverEntry !== "main.ts" &&
+    serverEntry !== "./main.ts"
+  ) {
     return result(
-      "unverified",
-      "fresh() options contain duplicate routeDir properties",
+      "unsupported",
+      `block targets require main.ts, found serverEntry ${
+        JSON.stringify(serverEntry)
+      }`,
     );
   }
-  const routeDirectory = routeDirectories[0];
-  if (routeDirectory === undefined) {
-    return result("ok", "default ./routes directory");
-  }
-  return routeDirectory === "routes" || routeDirectory === "./routes"
-    ? result(
-      "ok",
-      `default-compatible routeDir ${JSON.stringify(routeDirectory)}`,
-    )
-    : result(
+
+  const routeDirectory = optionValues.get("routeDir")![0];
+  if (
+    routeDirectory !== undefined && routeDirectory !== "routes" &&
+    routeDirectory !== "./routes"
+  ) {
+    return result(
       "unsupported",
       `block targets require ./routes, found routeDir ${
         JSON.stringify(routeDirectory)
       }`,
     );
+  }
+
+  const details = [
+    serverEntry === undefined
+      ? "default main.ts server entry"
+      : `default-compatible serverEntry ${JSON.stringify(serverEntry)}`,
+    routeDirectory === undefined
+      ? "default ./routes directory"
+      : `default-compatible routeDir ${JSON.stringify(routeDirectory)}`,
+  ];
+  return result("ok", details.join("; "));
+}
+
+type FreshAppEvent = {
+  kind: "staticFiles" | "fileRoutes";
+  index: number;
+};
+
+function freshAppChain(
+  tokens: readonly TypeScriptToken[],
+  start: number,
+  staticBindings: readonly string[],
+): { end: number; events: FreshAppEvent[] } | null {
+  const events: FreshAppEvent[] = [];
+  let cursor = start;
+  while (
+    tokens[cursor]?.value === "." &&
+    tokens[cursor + 1]?.kind === "identifier" &&
+    tokens[cursor + 2]?.value === "("
+  ) {
+    const method = tokens[cursor + 1];
+    const callStart = cursor + 2;
+    const callEnd = matchingToken(tokens, callStart, "(", ")");
+    if (callEnd === null) return null;
+
+    if (method.value === "use") {
+      const argumentsList = topLevelElements(
+        tokens.slice(callStart + 1, callEnd),
+      );
+      if (
+        argumentsList.some((argument) =>
+          argument[0]?.kind === "identifier" &&
+          staticBindings.includes(argument[0].value) &&
+          argument[1]?.value === "(" &&
+          matchingToken(argument, 1, "(", ")") === argument.length - 1
+        )
+      ) {
+        events.push({ kind: "staticFiles", index: cursor + 1 });
+      }
+    } else if (
+      method.value === "fsRoutes" && callEnd === callStart + 1
+    ) {
+      events.push({ kind: "fileRoutes", index: cursor + 1 });
+    }
+    cursor = callEnd + 1;
+  }
+  return { end: cursor, events };
 }
 
 function inspectFreshFileRoutes(source: string): CapabilityResult {
@@ -669,33 +746,40 @@ function inspectFreshFileRoutes(source: string): CapabilityResult {
     "fresh",
     "staticFiles",
   );
-  const appInstances = new Set<string>();
+  const declarations: Array<{ constructorEnd: number }> = [];
   let braces = 0;
   let brackets = 0;
   let parentheses = 0;
   for (let index = 0; index < tokens.length; index++) {
     const token = tokens[index];
     const topLevel = braces === 0 && brackets === 0 && parentheses === 0;
-    let constructorCall = index + 5;
-    if (tokens[constructorCall]?.value === "<") {
-      const typeArgumentsEnd = matchingToken(
-        tokens,
-        constructorCall,
-        "<",
-        ">",
-      );
-      constructorCall = typeArgumentsEnd === null ? -1 : typeArgumentsEnd + 1;
-    }
     if (
-      topLevel && token.value === "const" &&
-      tokens[index + 1]?.kind === "identifier" &&
-      tokens[index + 2]?.value === "=" &&
-      tokens[index + 3]?.value === "new" &&
-      appBindings.includes(tokens[index + 4]?.value) &&
-      tokens[constructorCall]?.value === "(" &&
-      matchingToken(tokens, constructorCall, "(", ")") !== null
+      topLevel && token.value === "export" &&
+      tokens[index + 1]?.value === "const" &&
+      tokens[index + 2]?.value === "app" &&
+      tokens[index + 3]?.value === "=" &&
+      tokens[index + 4]?.value === "new" &&
+      appBindings.includes(tokens[index + 5]?.value)
     ) {
-      appInstances.add(tokens[index + 1].value);
+      let constructorCall = index + 6;
+      if (tokens[constructorCall]?.value === "<") {
+        const typeArgumentsEnd = matchingToken(
+          tokens,
+          constructorCall,
+          "<",
+          ">",
+        );
+        constructorCall = typeArgumentsEnd === null ? -1 : typeArgumentsEnd + 1;
+      }
+      if (tokens[constructorCall]?.value === "(") {
+        const constructorEnd = matchingToken(
+          tokens,
+          constructorCall,
+          "(",
+          ")",
+        );
+        if (constructorEnd !== null) declarations.push({ constructorEnd });
+      }
     }
     if (token.value === "{") braces++;
     if (token.value === "}") braces--;
@@ -705,49 +789,60 @@ function inspectFreshFileRoutes(source: string): CapabilityResult {
     if (token.value === ")") parentheses--;
   }
 
-  const registrations = new Map<
-    string,
-    { staticFiles: boolean; fileRoutes: boolean }
-  >(
-    [...appInstances].map((name) => [
-      name,
-      { staticFiles: false, fileRoutes: false },
-    ]),
+  if (declarations.length !== 1) {
+    return result(
+      "unsupported",
+      "main.ts must directly export const app = new App()",
+    );
+  }
+
+  const declaration = declarations[0];
+  const events: FreshAppEvent[] = [];
+  const declarationChain = freshAppChain(
+    tokens,
+    declaration.constructorEnd + 1,
+    staticBindings,
   );
+  if (declarationChain === null) {
+    return result("unverified", "could not inspect the exported Fresh app");
+  }
+  if (
+    tokens[declarationChain.end] !== undefined &&
+    tokens[declarationChain.end].value !== ";"
+  ) {
+    return result(
+      "unsupported",
+      "exported Fresh app initializer is outside the supported direct form",
+    );
+  }
+  events.push(...declarationChain.events);
+
   braces = 0;
   brackets = 0;
   parentheses = 0;
-  for (let index = 0; index < tokens.length; index++) {
+  for (
+    let index = declaration.constructorEnd + 1;
+    index < tokens.length;
+    index++
+  ) {
     const token = tokens[index];
     const topLevel = braces === 0 && brackets === 0 && parentheses === 0;
-    const registration = topLevel && token.kind === "identifier"
-      ? registrations.get(token.value)
-      : undefined;
+    const previous = tokens[index - 1]?.value;
+    const statementStart = previous === ";" || previous === "}";
     if (
-      registration && tokens[index + 1]?.value === "." &&
-      tokens[index + 2]?.value === "use" &&
-      tokens[index + 3]?.value === "("
+      topLevel && statementStart && token.value === "app" &&
+      tokens[index + 1]?.value === "."
     ) {
-      const callEnd = matchingToken(tokens, index + 3, "(", ")");
-      if (callEnd !== null) {
-        const argumentsList = topLevelElements(
-          tokens.slice(index + 4, callEnd),
-        );
-        registration.staticFiles ||= argumentsList.some((argument) =>
-          argument[0]?.kind === "identifier" &&
-          staticBindings.includes(argument[0].value) &&
-          argument[1]?.value === "(" &&
-          matchingToken(argument, 1, "(", ")") === argument.length - 1
-        );
+      const chain = freshAppChain(tokens, index + 1, staticBindings);
+      if (
+        chain !== null &&
+        (tokens[chain.end] === undefined || tokens[chain.end].value === ";")
+      ) {
+        events.push(...chain.events);
+        index = chain.end;
+        continue;
       }
     }
-    if (
-      registration && tokens[index + 1]?.value === "." &&
-      tokens[index + 2]?.value === "fsRoutes" &&
-      tokens[index + 3]?.value === "(" &&
-      matchingToken(tokens, index + 3, "(", ")") !== null
-    ) registration.fileRoutes = true;
-
     if (token.value === "{") braces++;
     if (token.value === "}") braces--;
     if (token.value === "[") brackets++;
@@ -756,32 +851,31 @@ function inspectFreshFileRoutes(source: string): CapabilityResult {
     if (token.value === ")") parentheses--;
   }
 
-  const hasApp = appInstances.size > 0;
-  const hasStaticFiles = [...registrations.values()].some((entry) =>
-    entry.staticFiles
-  );
-  const hasFileRoutes = [...registrations.values()].some((entry) =>
-    entry.fileRoutes
-  );
-  const hasCompleteApp = [...registrations.values()].some((entry) =>
-    entry.staticFiles && entry.fileRoutes
-  );
-  if (hasCompleteApp) {
-    return result("ok", "main.ts registers static and file-system routes");
+  events.sort((left, right) => left.index - right.index);
+  const firstStatic = events.find((event) => event.kind === "staticFiles");
+  const firstFileRoutes = events.find((event) => event.kind === "fileRoutes");
+  if (
+    firstStatic && firstFileRoutes && firstStatic.index < firstFileRoutes.index
+  ) {
+    return result(
+      "ok",
+      "exported app registers staticFiles() before file-system routes",
+    );
   }
-  if (hasApp && hasStaticFiles && hasFileRoutes) {
+  if (firstStatic && firstFileRoutes) {
     return result(
       "unsupported",
-      "main.ts must register staticFiles() and .fsRoutes() on the same App instance",
+      "exported app must register staticFiles() before .fsRoutes()",
     );
   }
   const missing = [
-    hasApp ? null : "new App()",
-    hasStaticFiles ? null : "staticFiles()",
-    hasFileRoutes ? null : ".fsRoutes()",
+    firstStatic ? null : "staticFiles()",
+    firstFileRoutes ? null : ".fsRoutes()",
   ].filter((entry): entry is string => entry !== null);
-
-  return result("unsupported", `main.ts is missing ${missing.join(", ")}`);
+  return result(
+    "unsupported",
+    `exported app is missing ${missing.join(", ")}`,
+  );
 }
 
 function exportsDefineHelper(source: string): boolean | null {

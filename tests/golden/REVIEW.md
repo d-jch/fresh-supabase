@@ -24,6 +24,9 @@ and the semantic checklist below, then replace every `Pending` sign-off field.
   verified claims for the protected route to reuse.
 - Sign-out uses `local` scope. Generated forms do not impose a hard-coded
   password length; the Supabase project policy is authoritative.
+- Authentication `next` redirects remain inside `ctx.config.basePath`, including
+  an exact path-segment boundary (for example, `/portal-other` is outside
+  `/portal`).
 - Neither golden project imports `@fresh-supabase/cli` at runtime.
 - Generated dependency versions, operation kinds, targets, and content hashes
   agree with the embedded block definitions and each

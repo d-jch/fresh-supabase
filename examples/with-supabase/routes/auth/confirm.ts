@@ -40,6 +40,7 @@ export const handler = define.handlers({
     const next = resolveRedirectPath(
       ctx.url.searchParams.get("next"),
       fallback,
+      basePath,
     );
     const { supabase, pending } = getSupabaseServerContext(ctx.state, ctx.req);
     const { error } = await supabase.auth.verifyOtp({

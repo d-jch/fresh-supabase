@@ -37,6 +37,7 @@ export const handler = define.handlers({
       next: resolveRedirectPath(
         ctx.url.searchParams.get("next"),
         withFreshBasePath(basePath, "/protected"),
+        basePath,
       ),
     });
   },
@@ -48,6 +49,7 @@ export const handler = define.handlers({
     const next = resolveRedirectPath(
       form.get("next"),
       withFreshBasePath(basePath, "/protected"),
+      basePath,
     );
     if (!email || typeof password !== "string" || !password) {
       return page<LoginData>({

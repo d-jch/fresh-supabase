@@ -70,7 +70,7 @@
       "key": "file:lib/supabase/server.ts",
       "kind": "file.create",
       "target": "lib/supabase/server.ts",
-      "contentHash": "008e3d004689ead7191ccb8ef8deeb33ff234477075f5dde03128908f06187dd"
+      "contentHash": "a807ed699da671b286f4d0b61310375fbab7567b61b3af91e15d05deb6c65624"
     },
     {
       "block": "daisyui",
@@ -133,7 +133,7 @@
       "key": "file:routes/auth/confirm.ts",
       "kind": "file.create",
       "target": "routes/auth/confirm.ts",
-      "contentHash": "d24924339c8399a81acb9fb29fc9c3f08584b316c092d992651cfd6c1739edc5"
+      "contentHash": "074651896537a350b8a330f1a0275dd93ded678c95fb5e973f50cf2a8dc00b1a"
     },
     {
       "block": "password-based-auth",
@@ -154,7 +154,7 @@
       "key": "file:routes/auth/login.tsx",
       "kind": "file.create",
       "target": "routes/auth/login.tsx",
-      "contentHash": "e37c9953c8aa0f98b84f6007b5494ef29f656c82d7c48147a220788b2a15f757"
+      "contentHash": "3325dc781969dbb3af5d15116b684eb04226583d2d9d1fd0e0bb9f17e9598e09"
     },
     {
       "block": "password-based-auth",

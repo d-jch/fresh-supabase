@@ -160,6 +160,26 @@ Deno.test("encoded slash retains URL-standard same-origin semantics", () => {
 });
 
 Deno.test("application paths honor Fresh basePath without weakening redirects", () => {
+  assertEquals(
+    resolveRedirectPath(
+      "/portal/account?tab=security",
+      "/portal/protected",
+      "/portal",
+    ),
+    "/portal/account?tab=security",
+  );
+  assertEquals(
+    resolveRedirectPath("/host-page", "/portal/protected", "/portal"),
+    "/portal/protected",
+  );
+  assertEquals(
+    resolveRedirectPath("/portal-other", "/portal/protected", "/portal"),
+    "/portal/protected",
+  );
+  assertThrows(
+    () => resolveRedirectPath("/portal/safe", "/host-page", "/portal"),
+    /basePath/,
+  );
   assertEquals(withFreshBasePath("", "/auth/login"), "/auth/login");
   assertEquals(
     withFreshBasePath("/portal", "/auth/login"),

@@ -229,13 +229,42 @@ function normalizeInternalPath(value: string): string | null {
   }
 }
 
-export function resolveRedirectPath(value: unknown, fallback = "/"): string {
+function normalizeFreshBasePath(basePath: string): string | null {
+  if (basePath === "" || basePath === "/") return "";
+  const safeBase = normalizeInternalPath(basePath);
+  if (
+    safeBase === null || safeBase.includes("?") || safeBase.includes("#")
+  ) return null;
+  return safeBase.replace(/\/$/, "");
+}
+
+function pathIsWithinBasePath(path: string, basePath: string): boolean {
+  if (basePath === "") return true;
+  const pathname = new URL(path, REDIRECT_BASE).pathname;
+  return pathname === basePath || pathname.startsWith(`${basePath}/`);
+}
+
+export function resolveRedirectPath(
+  value: unknown,
+  fallback = "/",
+  basePath = "",
+): string {
   const safeFallback = normalizeInternalPath(fallback);
   if (safeFallback === null) {
     throw new TypeError("Redirect fallback must be an internal path");
   }
-  return typeof value === "string"
-    ? normalizeInternalPath(value) ?? safeFallback
+  const safeBase = normalizeFreshBasePath(basePath);
+  if (safeBase === null) {
+    throw new TypeError("Fresh basePath must be an internal path prefix");
+  }
+  if (!pathIsWithinBasePath(safeFallback, safeBase)) {
+    throw new TypeError("Redirect fallback must stay within Fresh basePath");
+  }
+  const candidate = typeof value === "string"
+    ? normalizeInternalPath(value)
+    : null;
+  return candidate !== null && pathIsWithinBasePath(candidate, safeBase)
+    ? candidate
     : safeFallback;
 }
 
@@ -244,12 +273,9 @@ export function withFreshBasePath(basePath: string, path: string): string {
   if (safePath === null) {
     throw new TypeError("Application path must be an internal path");
   }
-  if (basePath === "" || basePath === "/") return safePath;
-  const safeBase = normalizeInternalPath(basePath);
-  if (
-    safeBase === null || safeBase.includes("?") || safeBase.includes("#")
-  ) {
+  const safeBase = normalizeFreshBasePath(basePath);
+  if (safeBase === null) {
     throw new TypeError("Fresh basePath must be an internal path prefix");
   }
-  return `${safeBase.replace(/\/$/, "")}${safePath}`;
+  return `${safeBase}${safePath}`;
 }

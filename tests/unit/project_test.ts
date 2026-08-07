@@ -49,6 +49,68 @@ routeApp.fsRoutes();
   });
 });
 
+Deno.test("requires file routes on the exported Fresh app", async () => {
+  await withTestProject({}, async (root) => {
+    await Deno.writeTextFile(
+      join(root, "main.ts"),
+      `import { App, staticFiles } from "fresh";
+const decoy = new App();
+decoy.use(staticFiles());
+decoy.fsRoutes();
+
+export const app = new App();
+`,
+    );
+    const project = await inspectProject(root);
+    assertEquals(project.capabilities.freshFileRoutes.status, "unsupported");
+  });
+});
+
+Deno.test("requires static files before Fresh file routes", async () => {
+  await withTestProject({}, async (root) => {
+    await Deno.writeTextFile(
+      join(root, "main.ts"),
+      `import { App, staticFiles } from "fresh";
+export const app = new App();
+app.fsRoutes();
+app.use(staticFiles());
+`,
+    );
+    const project = await inspectProject(root);
+    assertEquals(project.capabilities.freshFileRoutes.status, "unsupported");
+  });
+});
+
+Deno.test("accepts the official chained Fresh file-routing setup", async () => {
+  await withTestProject({}, async (root) => {
+    await Deno.writeTextFile(
+      join(root, "main.ts"),
+      `import { App, staticFiles } from "fresh";
+export const app = new App()
+  .use(staticFiles())
+  .fsRoutes();
+`,
+    );
+    const project = await inspectProject(root);
+    assertEquals(project.capabilities.freshFileRoutes.status, "ok");
+  });
+});
+
+Deno.test("accepts the official stepwise Fresh file-routing setup", async () => {
+  await withTestProject({}, async (root) => {
+    await Deno.writeTextFile(
+      join(root, "main.ts"),
+      `import { App, staticFiles } from "fresh";
+export const app = new App();
+app.use(staticFiles());
+app.fsRoutes();
+`,
+    );
+    const project = await inspectProject(root);
+    assertEquals(project.capabilities.freshFileRoutes.status, "ok");
+  });
+});
+
 Deno.test("accepts routing on an official generic Fresh App instance", async () => {
   await withTestProject({}, async (root) => {
     await Deno.writeTextFile(
@@ -106,6 +168,23 @@ Deno.test("accepts an explicit default Fresh route directory", async () => {
   await withTestProject({ routeDir: "./routes" }, async (root) => {
     const project = await inspectProject(root);
     assertEquals(project.capabilities.freshDefaultRoutes.status, "ok");
+  });
+});
+
+Deno.test("rejects a custom Fresh server entry", async () => {
+  await withTestProject({ tailwind: true }, async (root) => {
+    await Deno.writeTextFile(
+      join(root, "vite.config.ts"),
+      `import { defineConfig } from "vite";
+import { fresh } from "@fresh/plugin-vite";
+import tailwindcss from "@tailwindcss/vite";
+export default defineConfig({
+  plugins: [fresh({ serverEntry: "./server.ts" }), tailwindcss()],
+});
+`,
+    );
+    const project = await inspectProject(root);
+    assertEquals(project.capabilities.freshDefaultRoutes.status, "unsupported");
   });
 });
 
