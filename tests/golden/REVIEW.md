@@ -37,7 +37,7 @@ and the semantic checklist below, then replace every `Pending` sign-off field.
 ## Sign-off
 
 - Candidate branch: `feat/cli-0.2.0`
-- Reviewed commit: Pending
-- Reviewer: Pending
-- Result: Pending
-- Reviewed on: Pending
+- Reviewed commit: `674ba5f10020763cf67c1671da4b49269bb3e37b`
+- Reviewer: `d-jch`
+- Result: Approved
+- Reviewed on: 2026-08-07
