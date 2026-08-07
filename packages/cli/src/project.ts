@@ -9,7 +9,12 @@ export interface CapabilityResult {
 }
 
 export interface ProjectCapabilities {
+  envFileIgnored: CapabilityResult;
   fresh2: CapabilityResult;
+  freshFileRoutes: CapabilityResult;
+  freshDefaultRoutes: CapabilityResult;
+  freshDefineHelper: CapabilityResult;
+  freshRootAlias: CapabilityResult;
   vite: CapabilityResult;
   tailwind4: CapabilityResult;
   daisyui: CapabilityResult;
@@ -356,7 +361,10 @@ function importedPluginBindings(
 
     if (expectedExport === "default") {
       const binding = tokens[index + 1];
-      if (binding?.kind === "identifier") bindings.push(binding.value);
+      if (
+        binding?.kind === "identifier" && binding.value !== "type" &&
+        binding.value !== "from"
+      ) bindings.push(binding.value);
       continue;
     }
 
@@ -367,12 +375,19 @@ function importedPluginBindings(
     const namedStart = index + 1 + openOffset;
     const namedEnd = matchingToken(tokens, namedStart, "{", "}");
     if (namedEnd === null || namedEnd > from) continue;
-    for (let cursor = namedStart + 1; cursor < namedEnd; cursor++) {
-      if (tokens[cursor].value !== expectedExport) continue;
-      const alias = tokens[cursor + 1]?.value === "as"
-        ? tokens[cursor + 2]
-        : tokens[cursor];
-      if (alias?.kind === "identifier") bindings.push(alias.value);
+    for (
+      const specifier of topLevelElements(
+        tokens.slice(namedStart + 1, namedEnd),
+      )
+    ) {
+      if (specifier[0]?.value === "type") continue;
+      const imported = specifier[0];
+      if (
+        imported?.kind !== "identifier" ||
+        imported.value !== expectedExport
+      ) continue;
+      const binding = specifier[1]?.value === "as" ? specifier[2] : imported;
+      if (binding?.kind === "identifier") bindings.push(binding.value);
     }
   }
 
@@ -499,6 +514,328 @@ function importedPluginIsRegistered(
       return matchingToken(element, 1, "(", ")") === element.length - 1;
     })
   );
+}
+
+function topLevelElements(
+  tokens: readonly TypeScriptToken[],
+): TypeScriptToken[][] {
+  const elements: TypeScriptToken[][] = [];
+  let current: TypeScriptToken[] = [];
+  let braces = 0;
+  let brackets = 0;
+  let parentheses = 0;
+  for (const token of tokens) {
+    if (
+      token.value === "," && braces === 0 && brackets === 0 &&
+      parentheses === 0
+    ) {
+      if (current.length > 0) elements.push(current);
+      current = [];
+      continue;
+    }
+    current.push(token);
+    if (token.value === "{") braces++;
+    if (token.value === "}") braces--;
+    if (token.value === "[") brackets++;
+    if (token.value === "]") brackets--;
+    if (token.value === "(") parentheses++;
+    if (token.value === ")") parentheses--;
+  }
+  if (current.length > 0) elements.push(current);
+  return elements;
+}
+
+function inspectFreshRouteDirectory(source: string): CapabilityResult {
+  const tokens = tokenizeTypeScript(source);
+  if (!tokens) {
+    return result("unverified", "could not parse vite.config.ts");
+  }
+  const bindings = importedPluginBindings(
+    tokens,
+    "@fresh/plugin-vite",
+    "fresh",
+  );
+  const plugins = exportedPluginArray(tokens);
+  if (!plugins) {
+    return result("unverified", "could not identify the Vite plugins array");
+  }
+  const calls = topLevelElements(plugins).filter((element) =>
+    element[0]?.kind === "identifier" &&
+    bindings.includes(element[0].value) && element[1]?.value === "(" &&
+    matchingToken(element, 1, "(", ")") === element.length - 1
+  );
+  if (calls.length !== 1) {
+    return result(
+      "unverified",
+      "expected exactly one direct fresh() Vite plugin call",
+    );
+  }
+
+  const args = calls[0].slice(2, -1);
+  if (args.length === 0) return result("ok", "default ./routes directory");
+  if (
+    args[0]?.value !== "{" ||
+    matchingToken(args, 0, "{", "}") !== args.length - 1
+  ) {
+    return result(
+      "unverified",
+      "fresh() options are not a static object literal",
+    );
+  }
+
+  const routeDirectories: string[] = [];
+  for (const property of topLevelElements(args.slice(1, -1))) {
+    if (property[0]?.value === "...") {
+      return result(
+        "unverified",
+        "fresh() options use a spread that may override routeDir",
+      );
+    }
+
+    let key: TypeScriptToken | undefined;
+    let colonIndex = 1;
+    if (property[0]?.value === "[") {
+      const computedEnd = matchingToken(property, 0, "[", "]");
+      if (
+        computedEnd === null || computedEnd !== 2 ||
+        property[1]?.kind !== "string"
+      ) {
+        return result(
+          "unverified",
+          "fresh() options use a dynamic computed property that may override routeDir",
+        );
+      }
+      key = property[1];
+      colonIndex = computedEnd + 1;
+    } else {
+      key = property[0];
+      if (
+        ["get", "set", "async"].includes(key?.value ?? "") &&
+        property[1]?.value === "routeDir"
+      ) {
+        return result(
+          "unverified",
+          "routeDir is not a static string property",
+        );
+      }
+    }
+
+    if (
+      key?.value !== "routeDir" ||
+      (key.kind !== "identifier" && key.kind !== "string")
+    ) continue;
+    if (property[colonIndex]?.value !== ":") {
+      return result("unverified", "routeDir is not a static string property");
+    }
+    const value = property[colonIndex + 1];
+    if (
+      value?.kind !== "string" || property.length !== colonIndex + 2
+    ) {
+      return result("unverified", "routeDir is not a static string property");
+    }
+    routeDirectories.push(value.value);
+  }
+
+  if (routeDirectories.length > 1) {
+    return result(
+      "unverified",
+      "fresh() options contain duplicate routeDir properties",
+    );
+  }
+  const routeDirectory = routeDirectories[0];
+  if (routeDirectory === undefined) {
+    return result("ok", "default ./routes directory");
+  }
+  return routeDirectory === "routes" || routeDirectory === "./routes"
+    ? result(
+      "ok",
+      `default-compatible routeDir ${JSON.stringify(routeDirectory)}`,
+    )
+    : result(
+      "unsupported",
+      `block targets require ./routes, found routeDir ${
+        JSON.stringify(routeDirectory)
+      }`,
+    );
+}
+
+function inspectFreshFileRoutes(source: string): CapabilityResult {
+  const tokens = tokenizeTypeScript(source);
+  if (!tokens) return result("unverified", "could not parse main.ts");
+
+  const appBindings = importedPluginBindings(tokens, "fresh", "App");
+  const staticBindings = importedPluginBindings(
+    tokens,
+    "fresh",
+    "staticFiles",
+  );
+  const appInstances = new Set<string>();
+  let braces = 0;
+  let brackets = 0;
+  let parentheses = 0;
+  for (let index = 0; index < tokens.length; index++) {
+    const token = tokens[index];
+    const topLevel = braces === 0 && brackets === 0 && parentheses === 0;
+    let constructorCall = index + 5;
+    if (tokens[constructorCall]?.value === "<") {
+      const typeArgumentsEnd = matchingToken(
+        tokens,
+        constructorCall,
+        "<",
+        ">",
+      );
+      constructorCall = typeArgumentsEnd === null ? -1 : typeArgumentsEnd + 1;
+    }
+    if (
+      topLevel && token.value === "const" &&
+      tokens[index + 1]?.kind === "identifier" &&
+      tokens[index + 2]?.value === "=" &&
+      tokens[index + 3]?.value === "new" &&
+      appBindings.includes(tokens[index + 4]?.value) &&
+      tokens[constructorCall]?.value === "(" &&
+      matchingToken(tokens, constructorCall, "(", ")") !== null
+    ) {
+      appInstances.add(tokens[index + 1].value);
+    }
+    if (token.value === "{") braces++;
+    if (token.value === "}") braces--;
+    if (token.value === "[") brackets++;
+    if (token.value === "]") brackets--;
+    if (token.value === "(") parentheses++;
+    if (token.value === ")") parentheses--;
+  }
+
+  const registrations = new Map<
+    string,
+    { staticFiles: boolean; fileRoutes: boolean }
+  >(
+    [...appInstances].map((name) => [
+      name,
+      { staticFiles: false, fileRoutes: false },
+    ]),
+  );
+  braces = 0;
+  brackets = 0;
+  parentheses = 0;
+  for (let index = 0; index < tokens.length; index++) {
+    const token = tokens[index];
+    const topLevel = braces === 0 && brackets === 0 && parentheses === 0;
+    const registration = topLevel && token.kind === "identifier"
+      ? registrations.get(token.value)
+      : undefined;
+    if (
+      registration && tokens[index + 1]?.value === "." &&
+      tokens[index + 2]?.value === "use" &&
+      tokens[index + 3]?.value === "("
+    ) {
+      const callEnd = matchingToken(tokens, index + 3, "(", ")");
+      if (callEnd !== null) {
+        const argumentsList = topLevelElements(
+          tokens.slice(index + 4, callEnd),
+        );
+        registration.staticFiles ||= argumentsList.some((argument) =>
+          argument[0]?.kind === "identifier" &&
+          staticBindings.includes(argument[0].value) &&
+          argument[1]?.value === "(" &&
+          matchingToken(argument, 1, "(", ")") === argument.length - 1
+        );
+      }
+    }
+    if (
+      registration && tokens[index + 1]?.value === "." &&
+      tokens[index + 2]?.value === "fsRoutes" &&
+      tokens[index + 3]?.value === "(" &&
+      matchingToken(tokens, index + 3, "(", ")") !== null
+    ) registration.fileRoutes = true;
+
+    if (token.value === "{") braces++;
+    if (token.value === "}") braces--;
+    if (token.value === "[") brackets++;
+    if (token.value === "]") brackets--;
+    if (token.value === "(") parentheses++;
+    if (token.value === ")") parentheses--;
+  }
+
+  const hasApp = appInstances.size > 0;
+  const hasStaticFiles = [...registrations.values()].some((entry) =>
+    entry.staticFiles
+  );
+  const hasFileRoutes = [...registrations.values()].some((entry) =>
+    entry.fileRoutes
+  );
+  const hasCompleteApp = [...registrations.values()].some((entry) =>
+    entry.staticFiles && entry.fileRoutes
+  );
+  if (hasCompleteApp) {
+    return result("ok", "main.ts registers static and file-system routes");
+  }
+  if (hasApp && hasStaticFiles && hasFileRoutes) {
+    return result(
+      "unsupported",
+      "main.ts must register staticFiles() and .fsRoutes() on the same App instance",
+    );
+  }
+  const missing = [
+    hasApp ? null : "new App()",
+    hasStaticFiles ? null : "staticFiles()",
+    hasFileRoutes ? null : ".fsRoutes()",
+  ].filter((entry): entry is string => entry !== null);
+
+  return result("unsupported", `main.ts is missing ${missing.join(", ")}`);
+}
+
+function exportsDefineHelper(source: string): boolean | null {
+  const tokens = tokenizeTypeScript(source);
+  if (!tokens) return null;
+  let braces = 0;
+  let brackets = 0;
+  let parentheses = 0;
+  for (let index = 0; index < tokens.length; index++) {
+    const token = tokens[index];
+    const topLevel = braces === 0 && brackets === 0 && parentheses === 0;
+    if (topLevel && token.value === "export") {
+      if (
+        ["const", "let", "var", "function", "class"].includes(
+          tokens[index + 1]?.value,
+        ) &&
+        tokens[index + 2]?.value === "define"
+      ) return true;
+      if (tokens[index + 1]?.value === "{") {
+        const end = matchingToken(tokens, index + 1, "{", "}");
+        if (end === null) return null;
+        for (
+          const specifier of topLevelElements(tokens.slice(index + 2, end))
+        ) {
+          if (specifier[0]?.value === "type") continue;
+          const exported = specifier[1]?.value === "as"
+            ? specifier[2]
+            : specifier[0];
+          if (
+            (exported?.kind === "identifier" || exported?.kind === "string") &&
+            exported.value === "define"
+          ) return true;
+        }
+      }
+    }
+    if (token.value === "{") braces++;
+    if (token.value === "}") braces--;
+    if (token.value === "[") brackets++;
+    if (token.value === "]") brackets--;
+    if (token.value === "(") parentheses++;
+    if (token.value === ")") parentheses--;
+  }
+  return false;
+}
+
+function explicitlyIgnoresRootEnv(source: string): boolean {
+  let ignored = false;
+  for (const rawLine of source.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    if (line === ".env" || line === "/.env") ignored = true;
+    if (line === "!.env" || line === "!/.env") ignored = false;
+  }
+  return ignored;
 }
 
 function stripCssComments(source: string): string | null {
@@ -639,6 +976,17 @@ export async function inspectProject(
   }
 
   const imports = collectImports(parsed);
+  const gitignoreSource = await readOptionalText(
+    join(resolvedRoot, ".gitignore"),
+  );
+  const envFileIgnored = gitignoreSource === null
+    ? result("missing", ".gitignore must explicitly ignore the root .env file")
+    : explicitlyIgnoresRootEnv(gitignoreSource)
+    ? result("ok", ".gitignore explicitly ignores .env")
+    : result(
+      "unsupported",
+      ".gitignore must contain an explicit .env or /.env rule",
+    );
   const freshSpecifier = findPackageSpecifier(
     imports,
     "jsr",
@@ -656,9 +1004,40 @@ export async function inspectProject(
       `expected Fresh 2, found ${freshSpecifier}`,
     );
 
+  const mainSource = await readOptionalText(join(resolvedRoot, "main.ts"));
+  const freshFileRoutes = mainSource === null
+    ? result("missing", "main.ts is required")
+    : inspectFreshFileRoutes(mainSource);
+
+  const rootAlias = imports["@/"];
+  const freshRootAlias = rootAlias === "./"
+    ? result("ok", '"@/": "./"')
+    : rootAlias === undefined
+    ? result("missing", 'imports must contain "@/": "./"')
+    : result(
+      "unsupported",
+      `expected "@/": "./", found ${JSON.stringify(rootAlias)}`,
+    );
+
   const viteSource = await readOptionalText(
     join(resolvedRoot, "vite.config.ts"),
   );
+  const freshDefaultRoutes = viteSource === null
+    ? result("missing", "vite.config.ts is required")
+    : inspectFreshRouteDirectory(viteSource);
+
+  const defineSource = await readOptionalText(join(resolvedRoot, "utils.ts"));
+  const defineExport = defineSource === null
+    ? false
+    : exportsDefineHelper(defineSource);
+  const freshDefineHelper = defineSource === null
+    ? result("missing", "utils.ts is required by generated @/utils.ts imports")
+    : defineExport === null
+    ? result("unverified", "could not parse utils.ts")
+    : defineExport
+    ? result("ok", "utils.ts exports define")
+    : result("unsupported", "utils.ts does not export define");
+
   const freshViteSpecifier = findPackageSpecifier(
     imports,
     "jsr",
@@ -739,6 +1118,16 @@ export async function inspectProject(
     configPath,
     config: parsed,
     imports,
-    capabilities: { fresh2, vite, tailwind4, daisyui },
+    capabilities: {
+      envFileIgnored,
+      fresh2,
+      freshFileRoutes,
+      freshDefaultRoutes,
+      freshDefineHelper,
+      freshRootAlias,
+      vite,
+      tailwind4,
+      daisyui,
+    },
   };
 }

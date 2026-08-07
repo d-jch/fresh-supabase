@@ -6,10 +6,10 @@ export class BlockTemplateError extends Error {
   override name = "BlockTemplateError";
 }
 
-export async function loadBlockTemplate(
+export function loadBlockTemplate(
   block: BlockDefinition,
   templatePath: string,
-): Promise<string> {
+): string {
   validateBlockPath(templatePath, `${block.name}.template`);
   const template = getEmbeddedTemplate(block.name, templatePath);
   if (template === undefined) {

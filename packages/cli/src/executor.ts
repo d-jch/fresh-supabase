@@ -1,5 +1,5 @@
 import { dirname } from "node:path";
-import type { BlockOperation } from "./block.ts";
+import { blockOperationKey } from "./block.ts";
 import {
   type InstallerManifest,
   InstallerStateError,
@@ -8,7 +8,11 @@ import {
   type ManifestOperation,
   validateInstallerManifest,
 } from "./installer_state.ts";
-import { ensureJsoncImports, JsoncEditError } from "./jsonc_edit.ts";
+import {
+  ensureJsoncImports,
+  ensureJsoncStringArrayEntry,
+  JsoncEditError,
+} from "./jsonc_edit.ts";
 import { resolveContainedTarget, targetExists } from "./paths.ts";
 import {
   createInstallPlan,
@@ -29,8 +33,8 @@ interface TextState {
 export interface ExecutableMutation {
   path: string;
   before: TextState;
-  content: string;
-  afterHash: string;
+  content: string | null;
+  afterHash: string | null;
   operationKeys: string[];
 }
 
@@ -76,7 +80,8 @@ interface InstallJournal {
     beforeExists: boolean;
     beforeHash: string | null;
     beforeContent: string | null;
-    afterHash: string;
+    afterExists: boolean;
+    afterHash: string | null;
   }>;
   createdDirectories: string[];
 }
@@ -124,24 +129,12 @@ function operationTarget(
 ): string {
   switch (planned.operation.kind) {
     case "dependency.ensure":
+    case "config.exclude.ensure":
       return configPath;
     case "file.create":
     case "env.ensure":
     case "css.ensure":
       return planned.operation.path;
-  }
-}
-
-function operationKey(operation: BlockOperation): string {
-  switch (operation.kind) {
-    case "file.create":
-      return `file:${operation.path}`;
-    case "dependency.ensure":
-      return `dependency:${operation.alias}`;
-    case "env.ensure":
-      return `env:${operation.path}:${operation.name}`;
-    case "css.ensure":
-      return `css:${operation.path}:${operation.statement}`;
   }
 }
 
@@ -244,7 +237,7 @@ async function missingParentDirectories(
 
 export async function createExecutablePlan(
   root: string,
-  requested: string,
+  requested: string | readonly string[],
   cliVersion: string,
 ): Promise<ExecutableInstallPlan> {
   let installPlan = await createInstallPlan(root, requested);
@@ -260,7 +253,7 @@ export async function createExecutablePlan(
   if (await targetExists(await resolveContainedTarget(root, JOURNAL_PATH))) {
     installPlan = planWithIssue(
       installPlan,
-      requested,
+      installPlan.requested.join(", "),
       `${JOURNAL_PATH} exists; recover the interrupted installation before continuing`,
     );
     return {
@@ -276,7 +269,11 @@ export async function createExecutablePlan(
     existingManifest = await readManifest(root);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    installPlan = planWithIssue(installPlan, requested, message);
+    installPlan = planWithIssue(
+      installPlan,
+      installPlan.requested.join(", "),
+      message,
+    );
     return {
       installPlan,
       mutations: [],
@@ -310,11 +307,18 @@ export async function createExecutablePlan(
         installPlan.project.configPath,
       );
       const target = await getWorking(targetPath);
-      const key = `${planned.block}:${operationKey(planned.operation)}`;
+      const key = `${planned.block}:${blockOperationKey(planned.operation)}`;
       target.operationKeys.push(key);
       if (planned.state !== "pending") continue;
 
       switch (planned.operation.kind) {
+        case "config.exclude.ensure":
+          target.content = ensureJsoncStringArrayEntry(
+            target.content,
+            "exclude",
+            planned.operation.pattern,
+          );
+          break;
         case "dependency.ensure":
           target.content = ensureJsoncImports(target.content, [{
             alias: planned.operation.alias,
@@ -348,7 +352,11 @@ export async function createExecutablePlan(
       error instanceof BlockTemplateError || error instanceof JsoncEditError ||
       error instanceof ExecutionPlanError
     ) {
-      installPlan = planWithIssue(installPlan, requested, error.message);
+      installPlan = planWithIssue(
+        installPlan,
+        installPlan.requested.join(", "),
+        error.message,
+      );
       return {
         installPlan,
         mutations: [],
@@ -374,13 +382,25 @@ export async function createExecutablePlan(
       });
     }
   }
+  for (const removal of installPlan.removals) {
+    if (removal.state !== "pending") continue;
+    const before = await readTextState(root, removal.path);
+    if (!before.exists) continue;
+    mutations.push({
+      path: removal.path,
+      before,
+      content: null,
+      afterHash: null,
+      operationKeys: [`${removal.block}:cleanup:${removal.path}`],
+    });
+  }
 
   const manifestOperations: ManifestOperation[] = installPlan.operations.map(
     (planned) => {
       const target = operationTarget(planned, installPlan.project.configPath);
       return {
         block: planned.block,
-        key: operationKey(planned.operation),
+        key: blockOperationKey(planned.operation),
         kind: planned.operation.kind,
         target,
         contentHash: afterHashes.get(target)!,
@@ -408,7 +428,12 @@ export async function createExecutablePlan(
 
   const directoriesToCreate = await missingParentDirectories(
     root,
-    [JOURNAL_PATH, ...mutations.map((mutation) => mutation.path)],
+    [
+      JOURNAL_PATH,
+      ...mutations.flatMap((mutation) =>
+        mutation.content === null ? [] : [mutation.path]
+      ),
+    ],
   );
   return { installPlan, mutations, directoriesToCreate, manifest };
 }
@@ -444,12 +469,18 @@ function validateJournal(value: unknown): InstallJournal {
           /^[0-9a-f]{64}$/.test(entry.beforeHash))) ||
       !(entry.beforeContent === null ||
         typeof entry.beforeContent === "string") ||
-      typeof entry.afterHash !== "string" ||
-      !/^[0-9a-f]{64}$/.test(entry.afterHash) ||
+      !(entry.afterExists === undefined ||
+        typeof entry.afterExists === "boolean") ||
       (entry.beforeExists &&
         (entry.beforeHash === null || entry.beforeContent === null)) ||
       (!entry.beforeExists &&
-        (entry.beforeHash !== null || entry.beforeContent !== null))
+        (entry.beforeHash !== null || entry.beforeContent !== null)) ||
+      !(
+        (entry.afterExists !== false &&
+          typeof entry.afterHash === "string" &&
+          /^[0-9a-f]{64}$/.test(entry.afterHash)) ||
+        (entry.afterExists === false && entry.afterHash === null)
+      )
     ) {
       throw new InstallExecutionError(
         `install journal mutations[${index}] is invalid`,
@@ -460,7 +491,8 @@ function validateJournal(value: unknown): InstallJournal {
       beforeExists: entry.beforeExists,
       beforeHash: entry.beforeHash,
       beforeContent: entry.beforeContent,
-      afterHash: entry.afterHash,
+      afterExists: entry.afterExists !== false,
+      afterHash: entry.afterHash as string | null,
     };
   });
   const createdDirectories = value.createdDirectories.map((entry, index) => {
@@ -539,7 +571,11 @@ export async function recoverInterruptedInstall(
     if (mutation.beforeExists) {
       if (current.exists && current.hash === mutation.beforeHash) {
         actions.push("none");
-      } else if (current.exists && current.hash === mutation.afterHash) {
+      } else if (
+        (mutation.afterExists && current.exists &&
+          current.hash === mutation.afterHash) ||
+        (!mutation.afterExists && !current.exists)
+      ) {
         actions.push("restore");
       } else {
         throw new InstallExecutionError(
@@ -548,7 +584,9 @@ export async function recoverInterruptedInstall(
       }
     } else if (!current.exists) {
       actions.push("none");
-    } else if (current.hash === mutation.afterHash) {
+    } else if (
+      mutation.afterExists && current.hash === mutation.afterHash
+    ) {
       actions.push("remove");
     } else {
       throw new InstallExecutionError(
@@ -624,6 +662,7 @@ export async function executeInstallPlan(
       beforeExists: mutation.before.exists,
       beforeHash: mutation.before.hash,
       beforeContent: mutation.before.content,
+      afterExists: mutation.content !== null,
       afterHash: mutation.afterHash,
     })),
     createdDirectories: plan.directoriesToCreate,
@@ -657,12 +696,19 @@ export async function executeInstallPlan(
       const mutation = plan.mutations[index];
       await verifyMutation(root, mutation);
       const target = await resolveContainedTarget(root, mutation.path);
-      await Deno.writeTextFile(target, mutation.content, {
-        create: false,
-        createNew: !mutation.before.exists,
-      });
+      if (mutation.content === null) {
+        await Deno.remove(target);
+      } else {
+        await Deno.writeTextFile(target, mutation.content, {
+          create: false,
+          createNew: !mutation.before.exists,
+        });
+      }
       const written = await readTextState(root, mutation.path);
-      if (written.hash !== mutation.afterHash) {
+      if (
+        written.exists !== (mutation.content !== null) ||
+        written.hash !== mutation.afterHash
+      ) {
         throw new InstallExecutionError(
           `post-write hash mismatch for ${mutation.path}`,
         );

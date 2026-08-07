@@ -1,5 +1,7 @@
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+// deno-lint-ignore no-import-prefix -- this harness runs under generated project configs too.
+import { App } from "jsr:@fresh/core@^2.3.3";
 
 function assert(
   condition: unknown,
@@ -29,44 +31,28 @@ function assertThrows(action: () => unknown, pattern: RegExp) {
   throw new Error("expected action to throw");
 }
 
-async function assertRejects(action: () => Promise<unknown>, status: number) {
-  try {
-    await action();
-  } catch (error) {
-    assert(
-      typeof error === "object" && error !== null && "status" in error,
-      "expected an HTTP status error",
-    );
-    assertEquals((error as { status: unknown }).status, status);
-    return;
-  }
-  throw new Error("expected action to reject");
-}
-
 const root = Deno.env.get("GENERATED_PROJECT_ROOT");
 if (!root) throw new Error("GENERATED_PROJECT_ROOT is required");
 
 const generated = (path: string) =>
   pathToFileURL(join(root, ...path.split("/"))).href;
-const { resolveRedirectPath } = await import(
-  generated("lib/supabase/redirect.ts")
-);
-const { commitSupabaseResponse } = await import(
-  generated("lib/supabase/response.ts")
-);
 const {
   collectPendingSupabaseChanges,
+  commitSupabaseResponse,
   createPendingSupabaseChanges,
+  resolveRedirectPath,
+  withFreshBasePath,
 } = await import(generated("lib/supabase/server.ts"));
-const authMiddleware = (await import(
-  generated("routes/(auth)/_middleware.ts")
-)).default;
+const { isSupabasePublicPath, scopedAuthCsrf: authMiddleware } = await import(
+  generated("lib/supabase/middleware.ts")
+);
 
 interface TestCookie {
   name: string;
   value: string;
   options: {
     httpOnly?: boolean;
+    maxAge?: number;
     path?: string;
     priority?: "low" | "medium" | "high";
     sameSite?: boolean | "lax" | "strict" | "none";
@@ -92,6 +78,16 @@ Deno.test("redirect helper accepts internal URL components", () => {
     "/account?tab=security#password",
   );
   assertEquals(resolveRedirectPath(null, "/account"), "/account");
+});
+
+Deno.test("global auth middleware exposes only upstream public prefixes", () => {
+  assert(isSupabasePublicPath("/auth/login", ""));
+  assert(isSupabasePublicPath("/login", ""));
+  assert(!isSupabasePublicPath("/", ""));
+  assert(!isSupabasePublicPath("/api/webhook", ""));
+  assert(isSupabasePublicPath("/portal/auth/login", "/portal"));
+  assert(isSupabasePublicPath("/portal/login", "/portal"));
+  assert(!isSupabasePublicPath("/portal/protected", "/portal"));
 });
 
 Deno.test("redirect helper rejects unsafe candidates and fallbacks", () => {
@@ -163,6 +159,26 @@ Deno.test("encoded slash retains URL-standard same-origin semantics", () => {
   assertEquals(resolveRedirectPath(resolved, "/safe"), resolved);
 });
 
+Deno.test("application paths honor Fresh basePath without weakening redirects", () => {
+  assertEquals(withFreshBasePath("", "/auth/login"), "/auth/login");
+  assertEquals(
+    withFreshBasePath("/portal", "/auth/login"),
+    "/portal/auth/login",
+  );
+  assertEquals(
+    withFreshBasePath("/portal/", "/protected?tab=1"),
+    "/portal/protected?tab=1",
+  );
+  assertThrows(
+    () => withFreshBasePath("//evil.example", "/auth/login"),
+    /basePath/,
+  );
+  assertThrows(
+    () => withFreshBasePath("/portal", "//evil.example"),
+    /Application path/,
+  );
+});
+
 Deno.test("response commit preserves existing and Supabase cookies", () => {
   const headers = new Headers();
   headers.append("set-cookie", "app-session=one; Path=/");
@@ -185,6 +201,40 @@ Deno.test("response commit preserves existing and Supabase cookies", () => {
     "sb-access=access%20value; Path=/; HttpOnly; Secure; Partitioned; Priority=High; SameSite=Lax",
     "sb-refresh=refresh%20value; Path=/; HttpOnly; SameSite=Lax",
   ]);
+});
+
+Deno.test("response commit normalizes cookie policies and deletion cookies", () => {
+  const pending = emptyPending();
+  const strict = cookie("strict", "one");
+  strict.options.sameSite = true;
+  const none = cookie("none", "two");
+  none.options.sameSite = "none";
+  none.options.secure = true;
+  const deleted = cookie("deleted", "");
+  deleted.options.maxAge = 0;
+  pending.cookies.push(strict, none, deleted);
+
+  assertEquals(
+    commitSupabaseResponse(new Response("ok"), pending).headers.getSetCookie(),
+    [
+      "strict=one; Path=/; HttpOnly; SameSite=Strict",
+      "none=two; Path=/; HttpOnly; Secure; SameSite=None",
+      "deleted=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax",
+    ],
+  );
+});
+
+Deno.test("response commit clones immutable upstream response headers", async () => {
+  const upstream = await fetch("data:text/plain,proxied");
+  assertThrows(() => upstream.headers.set("x-test", "no"), /immutable/i);
+  const pending = emptyPending();
+  pending.cookies.push(cookie("sb-access", "value"));
+  const committed = commitSupabaseResponse(upstream, pending);
+  assertEquals(await committed.text(), "proxied");
+  assertEquals(
+    committed.headers.getSetCookie(),
+    ["sb-access=value; Path=/; HttpOnly; SameSite=Lax"],
+  );
 });
 
 Deno.test("response commit rejects cookie injection characters", () => {
@@ -316,29 +366,60 @@ Deno.test("response commit handles identity, redirect, JSON, empty, and stream b
   assertEquals(await streamed.text(), "streamed");
 });
 
-Deno.test("auth route middleware rejects cross-site browser mutations only", async () => {
+Deno.test("scoped CSRF rejects cross-site browser mutations only", async () => {
   assert(typeof authMiddleware === "function");
-  const invoke = (request: Request) => {
-    const context = {
-      req: request,
-      url: new URL(request.url),
-      next: () => Promise.resolve(new Response("next")),
-    };
-    return authMiddleware(context);
-  };
+  const next = () => new Response("next");
+  const invoke = new App()
+    .use(authMiddleware)
+    .get("/auth/confirm", next)
+    .post("/auth/sign-out", next)
+    .post("/protected", next)
+    .post("/api/webhook", next)
+    .handler();
 
-  await assertRejects(
-    () =>
-      invoke(
-        new Request("https://app.example/auth/sign-out", {
-          method: "POST",
-          headers: {
-            origin: "https://evil.example",
-            "sec-fetch-site": "cross-site",
-          },
-        }),
-      ),
+  assertEquals(
+    (await invoke(
+      new Request("https://app.example/auth/sign-out", {
+        method: "POST",
+        headers: {
+          origin: "https://evil.example",
+          "sec-fetch-site": "cross-site",
+        },
+      }),
+    )).status,
     403,
+  );
+  assertEquals(
+    (await invoke(
+      new Request("https://app.example/auth/sign-out", { method: "POST" }),
+    )).status,
+    200,
+    "Fresh csrf() allows non-browser POSTs with neither fetch metadata nor Origin",
+  );
+  assertEquals(
+    (await invoke(
+      new Request("https://app.example/protected", {
+        method: "POST",
+        headers: {
+          origin: "https://evil.example",
+          "sec-fetch-site": "cross-site",
+        },
+      }),
+    )).status,
+    403,
+  );
+  assertEquals(
+    (await invoke(
+      new Request("https://app.example/api/webhook", {
+        method: "POST",
+        headers: {
+          origin: "https://evil.example",
+          "sec-fetch-site": "cross-site",
+        },
+      }),
+    )).status,
+    200,
+    "auth CSRF scope must not change host webhooks",
   );
   assertEquals(
     (await invoke(
@@ -359,5 +440,33 @@ Deno.test("auth route middleware rejects cross-site browser mutations only", asy
       }),
     )).status,
     200,
+  );
+});
+
+Deno.test("auth route middleware honors Fresh basePath", async () => {
+  const next = () => new Response("next");
+  const invoke = new App({ basePath: "/portal" })
+    .use(authMiddleware)
+    .post("/auth/sign-out", next)
+    .post("/protected", next)
+    .handler();
+  const crossSite = {
+    method: "POST",
+    headers: {
+      origin: "https://evil.example",
+      "sec-fetch-site": "cross-site",
+    },
+  };
+  assertEquals(
+    (await invoke(
+      new Request("https://app.example/portal/auth/sign-out", crossSite),
+    )).status,
+    403,
+  );
+  assertEquals(
+    (await invoke(
+      new Request("https://app.example/portal/protected", crossSite),
+    )).status,
+    403,
   );
 });

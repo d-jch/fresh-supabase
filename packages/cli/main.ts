@@ -14,7 +14,7 @@ import {
   ProjectInspectionError,
 } from "./src/project.ts";
 
-export const VERSION = "0.1.1";
+export const VERSION = "0.2.0";
 
 const HELP = `fresh-supabase ${VERSION}
 
@@ -24,17 +24,17 @@ Usage:
   fresh-supabase doctor
   fresh-supabase list
   fresh-supabase view <block>
-  fresh-supabase add <block>
-  fresh-supabase add <block> --dry-run
+  fresh-supabase add <block...>
+  fresh-supabase add <block...> --dry-run
   fresh-supabase --help
   fresh-supabase --version
 
 Commands:
-  doctor                   Inspect Fresh, Vite, Tailwind, and daisyUI capabilities
+  doctor                   Inspect Fresh, root alias, Vite, Tailwind, and daisyUI capabilities
   list                     List embedded blocks
   view <block>             Show one block definition
-  add <block>              Preflight and install an embedded block
-  add <block> --dry-run    Preflight and print a deterministic installation plan
+  add <block...>           Preflight and install embedded blocks
+  add <block...> --dry-run Preflight and print a deterministic installation plan
 
 Options:
   --help       Show this help message
@@ -68,11 +68,29 @@ function formatDoctor(project: ProjectInspection): string {
   return [
     "Fresh project doctor",
     `Config: ${project.configPath}`,
+    formatCapability(".env ignore", capabilities.envFileIgnored),
     formatCapability("Fresh 2", capabilities.fresh2),
+    formatCapability("FS routes", capabilities.freshFileRoutes),
+    formatCapability("Route dir", capabilities.freshDefaultRoutes),
+    formatCapability("define", capabilities.freshDefineHelper),
+    formatCapability("Root alias", capabilities.freshRootAlias),
     formatCapability("Fresh Vite", capabilities.vite),
     formatCapability("Tailwind 4", capabilities.tailwind4),
     formatCapability("daisyUI", capabilities.daisyui),
   ].join("\n");
+}
+
+function hasHealthyFreshScaffold(project: ProjectInspection): boolean {
+  const capabilities = project.capabilities;
+  return [
+    capabilities.envFileIgnored,
+    capabilities.fresh2,
+    capabilities.freshFileRoutes,
+    capabilities.freshDefaultRoutes,
+    capabilities.freshDefineHelper,
+    capabilities.freshRootAlias,
+    capabilities.vite,
+  ].every((capability) => capability.status === "ok");
 }
 
 function formatOperation(operation: BlockOperation): string {
@@ -81,6 +99,8 @@ function formatOperation(operation: BlockOperation): string {
       return `file.create ${operation.path} <- ${operation.template}`;
     case "dependency.ensure":
       return `dependency.ensure ${operation.alias} = ${operation.specifier}`;
+    case "config.exclude.ensure":
+      return `config.exclude.ensure ${operation.pattern}`;
     case "env.ensure":
       return `env.ensure ${operation.path} ${operation.name}`;
     case "css.ensure":
@@ -95,19 +115,39 @@ function formatBlock(block: BlockDefinition): string {
   const requirements = block.requirements.length > 0
     ? block.requirements.join(", ")
     : "none";
-  return [
+  const lines = [
     `${block.name}@${block.version}`,
     block.description,
     `Dependencies: ${dependencies}`,
     `Requirements: ${requirements}`,
+  ];
+  if (block.upstream) {
+    lines.push(
+      `Upstream: ${block.upstream.name} (${block.upstream.files.length} files)`,
+      `Registry item: ${block.upstream.registryItem}`,
+      `Upstream registry dependencies: ${
+        block.upstream.registryDependencies.length > 0
+          ? block.upstream.registryDependencies.join(", ")
+          : "none"
+      }`,
+    );
+  }
+  lines.push(
     "Operations:",
     ...block.operations.map((operation) => `  - ${formatOperation(operation)}`),
-  ].join("\n");
+  );
+  if (block.postInstall.length > 0) {
+    lines.push(
+      "After install:",
+      ...block.postInstall.map((instruction) => `  - ${instruction}`),
+    );
+  }
+  return lines.join("\n");
 }
 
 function formatPlan(plan: InstallPlan, dryRun = true): string {
   const lines = [
-    `${dryRun ? "Dry run" : "Install plan"}: ${plan.requested}`,
+    `${dryRun ? "Dry run" : "Install plan"}: ${plan.requested.join(", ")}`,
     `Config: ${plan.project.configPath}`,
     "Blocks:",
     ...plan.blocks.map((block, index) => `  ${index + 1}. ${block.name}`),
@@ -117,6 +157,20 @@ function formatPlan(plan: InstallPlan, dryRun = true): string {
         formatOperation(planned.operation)
       } — ${planned.detail}`
     ),
+    "Managed cleanup:",
+    ...(plan.removals.length === 0
+      ? ["  - none"]
+      : plan.removals.map((removal) =>
+        `  - [${removal.state}] [${removal.block}] remove ${removal.path} — ${removal.detail}`
+      )),
+    "After install:",
+    ...(plan.blocks.flatMap((block) => block.postInstall).length === 0
+      ? ["  - none"]
+      : plan.blocks.flatMap((block) =>
+        block.postInstall.map((instruction) =>
+          `  - [${block.name}] ${instruction}`
+        )
+      )),
   ];
 
   if (plan.partialInstallation) {
@@ -195,42 +249,65 @@ export async function runCli(
         }
         const project = await inspectProject(cwd);
         io.stdout(formatDoctor(project));
-        return project.capabilities.fresh2.status === "ok" ? 0 : 1;
+        return hasHealthyFreshScaffold(project) ? 0 : 1;
       }
 
       case "add": {
-        if (rest.length === 1 && getBlock(rest[0])) {
+        const dryRunCount = rest.filter((argument) => argument === "--dry-run")
+          .length;
+        const unknownOption = rest.find((argument) =>
+          argument.startsWith("--") && argument !== "--dry-run"
+        );
+        const requested = rest.filter((argument) => argument !== "--dry-run");
+        if (
+          requested.length === 0 || dryRunCount > 1 || unknownOption ||
+          requested.some((name) => !getBlock(name))
+        ) {
+          const unknownBlock = requested.find((name) => !getBlock(name));
+          if (unknownBlock) {
+            return usageError(`Unknown block: ${unknownBlock}`, io);
+          }
+          return usageError(
+            "Usage: fresh-supabase add <block...> [--dry-run]",
+            io,
+          );
+        }
+
+        if (dryRunCount === 0) {
           const recovered = await recoverInterruptedInstall(cwd);
-          const executable = await createExecutablePlan(cwd, rest[0], VERSION);
+          const executable = await createExecutablePlan(
+            cwd,
+            requested,
+            VERSION,
+          );
           if (executable.installPlan.issues.length > 0) {
             io.stdout(formatPlan(executable.installPlan, false));
             return 1;
           }
           const result = await executeInstallPlan(executable);
+          const guidance = executable.installPlan.blocks.flatMap((block) =>
+            block.postInstall.map((instruction) =>
+              `  - [${block.name}] ${instruction}`
+            )
+          );
           io.stdout(
             (recovered
               ? "Recovered an interrupted installer transaction.\n"
               : "") +
               (result.changed
                 ? `Installed ${
-                  rest[0]
+                  requested.join(", ")
                 } with ${result.mutationCount} file mutation(s).\nManifest: ${MANIFEST_PATH}`
                 : `${
-                  rest[0]
-                } is already installed; no files changed.\nManifest: ${MANIFEST_PATH}`),
+                  requested.join(", ")
+                } is already installed; no files changed.\nManifest: ${MANIFEST_PATH}`) +
+              (guidance.length > 0
+                ? `\nAfter install:\n${guidance.join("\n")}`
+                : ""),
           );
           return 0;
         }
-        if (rest.length !== 2 || rest[1] !== "--dry-run") {
-          return usageError(
-            "Usage: fresh-supabase add <block> --dry-run",
-            io,
-          );
-        }
-        if (!getBlock(rest[0])) {
-          return usageError(`Unknown block: ${rest[0]}`, io);
-        }
-        const plan = await createInstallPlan(cwd, rest[0]);
+        const plan = await createInstallPlan(cwd, requested);
         io.stdout(formatPlan(plan));
         return plan.issues.length === 0 ? 0 : 1;
       }

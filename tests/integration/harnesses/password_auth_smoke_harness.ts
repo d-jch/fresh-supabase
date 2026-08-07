@@ -33,8 +33,27 @@ const USER = {
   updated_at: "2026-08-05T00:00:00.000Z",
   is_anonymous: false,
 };
+
+function base64Url(value: unknown): string {
+  return btoa(JSON.stringify(value))
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/, "");
+}
+
+const ACCESS_TOKEN = `${base64Url({ alg: "HS256", typ: "JWT" })}.${
+  base64Url({
+    sub: USER.id,
+    aud: USER.aud,
+    role: USER.role,
+    email: USER.email,
+    exp: 4_102_444_800,
+    iat: 1_775_000_000,
+    session_id: "00000000-0000-4000-8000-000000000002",
+  })
+}.test-signature`;
 const SESSION = {
-  access_token: "test-access-token",
+  access_token: ACCESS_TOKEN,
   token_type: "bearer",
   expires_in: 3600,
   expires_at: 4_102_444_800,
@@ -135,24 +154,54 @@ Deno.test({
           body: new URLSearchParams(fields),
         });
 
-      const anonymous = await invoke("/account");
-      assertEquals(anonymous.status, 303);
-      assert(
-        anonymous.headers.get("location")?.startsWith("/auth/sign-in?next="),
-        "anonymous account request should redirect to sign-in",
+      const authCallsBeforeStatic = calls.length;
+      const favicon = await invoke("/favicon.ico");
+      assertEquals(favicon.status, 200);
+      await favicon.body?.cancel();
+      assertEquals(
+        calls.length,
+        authCallsBeforeStatic,
+        "static files must bypass the Supabase route middleware",
       );
 
-      const signIn = await submit("/auth/sign-in", {
+      const anonymousHome = await invoke("/");
+      assertEquals(anonymousHome.status, 307);
+      assertEquals(
+        anonymousHome.headers.get("location"),
+        "http://app.example/auth/login",
+      );
+
+      const anonymousApi = await invoke("/api/webhook");
+      assertEquals(anonymousApi.status, 307);
+      assertEquals(
+        anonymousApi.headers.get("location"),
+        "http://app.example/auth/login",
+      );
+
+      const anonymous = await invoke("/protected");
+      assertEquals(anonymous.status, 307);
+      assertEquals(
+        anonymous.headers.get("location"),
+        "http://app.example/auth/login",
+      );
+
+      const signIn = await submit("/auth/login", {
         email: USER.email,
         password: "correct-horse-battery-staple",
-        next: "/account?tab=security",
+        next: "/protected?tab=security",
       });
       assertEquals(signIn.status, 303);
-      assertEquals(signIn.headers.get("location"), "/account?tab=security");
+      assertEquals(signIn.headers.get("location"), "/protected?tab=security");
       const sessionCookie = cookieHeader(signIn);
       assert(sessionCookie.length > 0, "sign-in should commit session cookies");
 
-      const account = await invoke("/account", {
+      const authenticatedHome = await invoke("/", {
+        headers: requestHeaders(sessionCookie),
+      });
+      assertEquals(authenticatedHome.status, 200);
+      await authenticatedHome.body?.cancel();
+
+      const account = await invoke("/protected", {
         headers: requestHeaders(sessionCookie),
       });
       assertEquals(account.status, 200);
@@ -163,10 +212,11 @@ Deno.test({
 
       const signUp = await submit("/auth/sign-up", {
         email: "new@example.com",
-        password: "new-password",
+        password: "x",
+        "repeat-password": "x",
       });
       assertEquals(signUp.status, 303);
-      assertEquals(signUp.headers.get("location"), "/account");
+      assertEquals(signUp.headers.get("location"), "/protected");
       assert(
         cookieHeader(signUp).length > 0,
         "sign-up should commit a session",
@@ -175,11 +225,8 @@ Deno.test({
       const forgot = await submit("/auth/forgot-password", {
         email: USER.email,
       });
-      assertEquals(forgot.status, 303);
-      assertEquals(
-        forgot.headers.get("location"),
-        "/auth/sign-in?message=reset-email",
-      );
+      assertEquals(forgot.status, 200);
+      assert((await forgot.text()).includes("Check your email"));
 
       const confirmation = await invoke(
         "/auth/confirm?token_hash=recovery-token&type=recovery",
@@ -194,15 +241,19 @@ Deno.test({
 
       const update = await submit(
         "/auth/update-password",
-        { password: "updated-password" },
+        { password: "y" },
         recoveryCookie,
       );
       assertEquals(update.status, 303);
-      assertEquals(update.headers.get("location"), "/account");
+      assertEquals(update.headers.get("location"), "/protected");
 
-      const signOut = await submit("/auth/sign-out", {}, sessionCookie);
+      const signOut = await submit(
+        "/protected",
+        { intent: "sign-out" },
+        sessionCookie,
+      );
       assertEquals(signOut.status, 303);
-      assertEquals(signOut.headers.get("location"), "/auth/sign-in");
+      assertEquals(signOut.headers.get("location"), "/auth/login");
       assert(
         cookieHeader(signOut).length > 0,
         "sign-out should commit cleared session cookies",
@@ -216,7 +267,7 @@ Deno.test({
           "POST /auth/v1/recover",
           "POST /auth/v1/verify",
           "PUT /auth/v1/user",
-          "POST /auth/v1/logout",
+          "POST /auth/v1/logout?scope=local",
         ]
       ) {
         assert(

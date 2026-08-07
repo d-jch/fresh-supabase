@@ -1,6 +1,10 @@
 import { join } from "node:path";
 
 export interface TestProjectOptions {
+  defineHelper?: boolean;
+  envIgnored?: boolean;
+  rootAlias?: boolean;
+  routeDir?: string;
   tailwind?: boolean;
   partialTailwind?: boolean;
   daisyui?: boolean;
@@ -34,12 +38,12 @@ export async function writeTestProject(
   const tailwind = options.tailwind ?? false;
   const partialTailwind = options.partialTailwind ?? false;
   const imports: Record<string, string> = {
-    "@/": "./",
     fresh: `jsr:@fresh/core@^${options.freshVersion ?? "2.3.3"}`,
     "@fresh/plugin-vite": "jsr:@fresh/plugin-vite@^1.1.2",
     preact: "npm:preact@^10.29.1",
     vite: "npm:vite@^7.1.3",
   };
+  if (options.rootAlias ?? true) imports["@/"] = "./";
 
   if (tailwind || partialTailwind) {
     imports.tailwindcss = "npm:tailwindcss@^4.1.10";
@@ -82,6 +86,9 @@ export async function writeTestProject(
     ? 'import tailwindcss from "@tailwindcss/vite";\n'
     : "";
   const tailwindPlugin = tailwind ? ", tailwindcss()" : "";
+  const freshPlugin = options.routeDir === undefined
+    ? "fresh()"
+    : `fresh({ routeDir: ${JSON.stringify(options.routeDir)} })`;
   await writeText(
     root,
     "vite.config.ts",
@@ -89,7 +96,7 @@ export async function writeTestProject(
 import { fresh } from "@fresh/plugin-vite";
 ${tailwindImport}
 export default defineConfig({
-  plugins: [fresh()${tailwindPlugin}],
+  plugins: [${freshPlugin}${tailwindPlugin}],
 });
 `,
   );
@@ -106,12 +113,27 @@ export default defineConfig({
   );
   await writeText(
     root,
-    "utils.ts",
-    `import { createDefine } from "fresh";
+    "main.ts",
+    `import { App, staticFiles } from "fresh";
+
+export const app = new App();
+app.use(staticFiles());
+app.fsRoutes();
+`,
+  );
+  if (options.defineHelper ?? true) {
+    await writeText(
+      root,
+      "utils.ts",
+      `import { createDefine } from "fresh";
 
 export const define = createDefine<Record<string, unknown>>();
 `,
-  );
+    );
+  }
+  if (options.envIgnored ?? true) {
+    await writeText(root, ".gitignore", ".env\n_fresh/\nnode_modules/\n");
+  }
 }
 
 export async function snapshotProject(root: string): Promise<string[]> {

@@ -120,11 +120,11 @@ await Deno.writeTextFile(
 
 await writeText(
   join(mutatedRoot, "existing-auth-route"),
-  "routes/(auth)/auth/sign-in.tsx",
-  `import { define } from "../../../utils.ts";
+  "routes/auth/login.tsx",
+  `import { define } from "@/utils.ts";
 
-export default define.page(function ExistingSignIn() {
-  return <p>User-owned sign-in route</p>;
+export default define.page(function ExistingLogin() {
+  return <p>User-owned login route</p>;
 });
 `,
 );
@@ -158,23 +158,23 @@ await Deno.writeTextFile(
   ),
 );
 
-const supabaseEnvTemplate = await Deno.readTextFile(
+const supabaseClientTemplate = await Deno.readTextFile(
   join(
     repositoryRoot,
     "packages",
     "cli",
     "blocks",
-    "supabase-client",
+    "client",
     "templates",
     "lib",
     "supabase",
-    "env.ts",
+    "client.ts",
   ),
 );
 await writeText(
   join(mutatedRoot, "partial-installation"),
-  "lib/supabase/env.ts",
-  supabaseEnvTemplate,
+  "lib/supabase/client.ts",
+  supabaseClientTemplate,
 );
 
 const files: Record<string, Record<string, string>> = {};
@@ -195,13 +195,13 @@ await Deno.writeTextFile(
       mutations: {
         "existing-daisyui":
           "adds the exact daisyUI dependency and CSS plugin statement",
-        "existing-auth-route": "adds a user-owned sign-in route",
+        "existing-auth-route": "adds a user-owned login route",
         "commented-deno-jsonc":
           "converts deno.json to deno.jsonc with comments and a trailing comma",
         "missing-tailwind-plugin":
           "retains Tailwind imports but removes tailwindcss() from Vite plugins",
         "partial-installation":
-          "adds exactly one embedded supabase-client template without installer state",
+          "adds exactly one embedded client template without installer state",
       },
       files,
     },

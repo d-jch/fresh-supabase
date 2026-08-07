@@ -2,7 +2,7 @@ import daisyuiJson from "../blocks/daisyui/block.json" with { type: "json" };
 import passwordAuthJson from "../blocks/password-based-auth/block.json" with {
   type: "json",
 };
-import supabaseClientJson from "../blocks/supabase-client/block.json" with {
+import clientJson from "../blocks/client/block.json" with {
   type: "json",
 };
 import {
@@ -13,7 +13,7 @@ import {
 
 const rawBlocks: ReadonlyArray<[string, unknown]> = [
   ["daisyui", daisyuiJson],
-  ["supabase-client", supabaseClientJson],
+  ["client", clientJson],
   ["password-based-auth", passwordAuthJson],
 ];
 
@@ -50,10 +50,13 @@ export function getBlock(name: string): BlockDefinition | undefined {
   return blockMap.get(name);
 }
 
-export function resolveBlockOrder(name: string): BlockDefinition[] {
-  const root = getBlock(name);
-  if (!root) throw new BlockFormatError(`unknown block: ${name}`);
-
+export function resolveBlockOrder(
+  requested: string | readonly string[],
+): BlockDefinition[] {
+  const names = typeof requested === "string" ? [requested] : [...requested];
+  if (names.length === 0) {
+    throw new BlockFormatError("at least one block is required");
+  }
   const ordered: BlockDefinition[] = [];
   const visited = new Set<string>();
   const visiting = new Set<string>();
@@ -79,6 +82,10 @@ export function resolveBlockOrder(name: string): BlockDefinition[] {
     ordered.push(block);
   };
 
-  visit(root);
+  for (const name of names) {
+    const root = getBlock(name);
+    if (!root) throw new BlockFormatError(`unknown block: ${name}`);
+    visit(root);
+  }
   return ordered;
 }

@@ -1,75 +1,169 @@
 {
   "schemaVersion": 1,
   "name": "password-based-auth",
-  "version": "0.1.0",
-  "description": "Add Fresh-native password authentication, protected account routes, and scoped CSRF.",
-  "dependencies": ["supabase-client", "daisyui"],
-  "requirements": ["fresh-2", "fresh-vite", "tailwind-4"],
+  "version": "0.2.0",
+  "description": "Add the Fresh-native counterpart of Supabase UI's 17-file password authentication block.",
+  "dependencies": ["client", "daisyui"],
+  "requirements": [
+    "fresh-2",
+    "fresh-file-routes",
+    "fresh-default-routes",
+    "fresh-define-helper",
+    "fresh-root-alias",
+    "fresh-vite",
+    "tailwind-4"
+  ],
+  "postInstall": [
+    "In Supabase Auth URL Configuration, set the Site URL and allow this app's /auth/confirm callback (including any Fresh basePath).",
+    "Configure signup and recovery email links to /auth/confirm with token_hash, type, and next query parameters; email templates remain Dashboard-managed upstream configuration.",
+    "This upstream-aligned block redirects every unauthenticated non-/auth and non-/login route to /auth/login; customize lib/supabase/middleware.ts if the host needs public routes or unauthenticated webhooks.",
+    "Exercise signup confirmation and password recovery against a real Supabase project before release."
+  ],
   "operations": [
     {
       "kind": "file.create",
-      "path": "lib/supabase/redirect.ts",
-      "template": "templates/lib/supabase/redirect.ts"
+      "path": "routes/auth/login.tsx",
+      "template": "templates/routes/auth/login.tsx"
     },
     {
       "kind": "file.create",
-      "path": "lib/supabase/require_user.ts",
-      "template": "templates/lib/supabase/require_user.ts"
+      "path": "routes/auth/error.tsx",
+      "template": "templates/routes/auth/error.tsx"
     },
     {
       "kind": "file.create",
-      "path": "routes/(auth)/_middleware.ts",
-      "template": "templates/routes/(auth)/_middleware.ts"
+      "path": "routes/protected/index.tsx",
+      "template": "templates/routes/protected/index.tsx"
     },
     {
       "kind": "file.create",
-      "path": "routes/(auth)/auth/sign-in.tsx",
-      "template": "templates/routes/(auth)/auth/sign-in.tsx"
+      "path": "routes/auth/confirm.ts",
+      "template": "templates/routes/auth/confirm.ts"
     },
     {
       "kind": "file.create",
-      "path": "routes/(auth)/auth/sign-up.tsx",
-      "template": "templates/routes/(auth)/auth/sign-up.tsx"
+      "path": "components/auth/login-form.tsx",
+      "template": "templates/components/auth/login-form.tsx"
     },
     {
       "kind": "file.create",
-      "path": "routes/(auth)/auth/forgot-password.tsx",
-      "template": "templates/routes/(auth)/auth/forgot-password.tsx"
+      "path": "routes/_middleware.ts",
+      "template": "templates/routes/_middleware.ts"
     },
     {
       "kind": "file.create",
-      "path": "routes/(auth)/auth/update-password.tsx",
-      "template": "templates/routes/(auth)/auth/update-password.tsx"
+      "path": "routes/auth/sign-up.tsx",
+      "template": "templates/routes/auth/sign-up.tsx"
     },
     {
       "kind": "file.create",
-      "path": "routes/(auth)/auth/confirm.ts",
-      "template": "templates/routes/(auth)/auth/confirm.ts"
+      "path": "routes/auth/sign-up-success.tsx",
+      "template": "templates/routes/auth/sign-up-success.tsx"
     },
     {
       "kind": "file.create",
-      "path": "routes/(auth)/auth/sign-out.ts",
-      "template": "templates/routes/(auth)/auth/sign-out.ts"
+      "path": "components/auth/sign-up-form.tsx",
+      "template": "templates/components/auth/sign-up-form.tsx"
     },
     {
       "kind": "file.create",
-      "path": "routes/(protected)/_middleware.ts",
-      "template": "templates/routes/(protected)/_middleware.ts"
+      "path": "routes/auth/forgot-password.tsx",
+      "template": "templates/routes/auth/forgot-password.tsx"
     },
     {
       "kind": "file.create",
-      "path": "routes/(protected)/account.tsx",
-      "template": "templates/routes/(protected)/account.tsx"
+      "path": "routes/auth/update-password.tsx",
+      "template": "templates/routes/auth/update-password.tsx"
     },
     {
       "kind": "file.create",
-      "path": "supabase/templates/confirmation.html",
-      "template": "templates/supabase/confirmation.html"
+      "path": "components/auth/forgot-password-form.tsx",
+      "template": "templates/components/auth/forgot-password-form.tsx"
     },
     {
       "kind": "file.create",
-      "path": "supabase/templates/recovery.html",
-      "template": "templates/supabase/recovery.html"
+      "path": "components/auth/update-password-form.tsx",
+      "template": "templates/components/auth/update-password-form.tsx"
+    },
+    {
+      "kind": "file.create",
+      "path": "components/auth/logout-button.tsx",
+      "template": "templates/components/auth/logout-button.tsx"
     }
-  ]
+  ],
+  "upstream": {
+    "name": "password-based-auth-nextjs",
+    "registryItem": "https://supabase.com/ui/r/password-based-auth-nextjs.json",
+    "registryDependencies": ["button", "card", "input", "label"],
+    "files": [
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/app/auth/login/page.tsx",
+        "target": "routes/auth/login.tsx"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/app/auth/error/page.tsx",
+        "target": "routes/auth/error.tsx"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/app/protected/page.tsx",
+        "target": "routes/protected/index.tsx"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/app/auth/confirm/route.ts",
+        "target": "routes/auth/confirm.ts"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/components/login-form.tsx",
+        "target": "components/auth/login-form.tsx"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/middleware.ts",
+        "target": "routes/_middleware.ts"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/app/auth/sign-up/page.tsx",
+        "target": "routes/auth/sign-up.tsx"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/app/auth/sign-up-success/page.tsx",
+        "target": "routes/auth/sign-up-success.tsx"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/components/sign-up-form.tsx",
+        "target": "components/auth/sign-up-form.tsx"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/app/auth/forgot-password/page.tsx",
+        "target": "routes/auth/forgot-password.tsx"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/app/auth/update-password/page.tsx",
+        "target": "routes/auth/update-password.tsx"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/components/forgot-password-form.tsx",
+        "target": "components/auth/forgot-password-form.tsx"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/components/update-password-form.tsx",
+        "target": "components/auth/update-password-form.tsx"
+      },
+      {
+        "source": "registry/default/blocks/password-based-auth-nextjs/components/logout-button.tsx",
+        "target": "components/auth/logout-button.tsx"
+      },
+      {
+        "source": "registry/default/clients/nextjs/lib/supabase/client.ts",
+        "target": "lib/supabase/client.ts"
+      },
+      {
+        "source": "registry/default/clients/nextjs/lib/supabase/middleware.ts",
+        "target": "lib/supabase/middleware.ts"
+      },
+      {
+        "source": "registry/default/clients/nextjs/lib/supabase/server.ts",
+        "target": "lib/supabase/server.ts"
+      }
+    ]
+  }
 }

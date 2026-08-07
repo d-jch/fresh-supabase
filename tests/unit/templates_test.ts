@@ -35,25 +35,62 @@ Deno.test("every declared file template is embedded", async () => {
 });
 
 Deno.test("embedded templates load without runtime filesystem access", async () => {
-  const block = listBlocks().find((block) => block.name === "supabase-client");
-  assert(block !== undefined, "missing supabase-client block");
+  const block = listBlocks().find((block) => block.name === "client");
+  assert(block !== undefined, "missing client block");
 
   const template = await loadBlockTemplate(
     block,
-    "templates/lib/supabase/env.ts",
+    "templates/lib/supabase/server.ts",
   );
   assert(
     template.includes("FRESH_PUBLIC_SUPABASE_URL"),
     "loaded the wrong embedded template",
   );
+
+  const client = await loadBlockTemplate(
+    block,
+    "templates/lib/supabase/client.ts",
+  );
+  for (
+    const name of [
+      "FRESH_PUBLIC_SUPABASE_URL",
+      "FRESH_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+    ]
+  ) {
+    assert(
+      client.includes(`Deno.env.get("${name}")`),
+      `${name} must remain a literal Fresh build-time lookup`,
+    );
+  }
+  assert(
+    !client.includes("Deno.env.get(name)"),
+    "dynamic environment names cannot be inlined into Fresh islands",
+  );
+});
+
+Deno.test("block templates use the Fresh root alias for project imports", async () => {
+  for (const block of listBlocks()) {
+    for (const operation of block.operations) {
+      if (operation.kind !== "file.create") continue;
+      const source = await loadBlockTemplate(block, operation.template);
+      assert(
+        !/\bfrom\s+["']\.\.?\//.test(source) &&
+          !/\bimport\s+["']\.\.?\//.test(source),
+        `${block.name}/${operation.template} contains a relative project import`,
+      );
+    }
+  }
 });
 
 Deno.test("missing embedded templates retain a domain error", async () => {
-  const block = listBlocks().find((block) => block.name === "supabase-client");
-  assert(block !== undefined, "missing supabase-client block");
+  const block = listBlocks().find((block) => block.name === "client");
+  assert(block !== undefined, "missing client block");
 
   await assertRejects(
-    () => loadBlockTemplate(block, "templates/missing.ts"),
+    () =>
+      Promise.resolve().then(() =>
+        loadBlockTemplate(block, "templates/missing.ts")
+      ),
     "is missing embedded template templates/missing.ts",
   );
   try {

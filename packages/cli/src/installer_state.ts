@@ -1,4 +1,8 @@
-import { type BlockOperation, validateBlockPath } from "./block.ts";
+import {
+  type BlockOperation,
+  isSemanticVersion,
+  validateBlockPath,
+} from "./block.ts";
 
 export const MANIFEST_PATH = ".fresh-supabase/manifest.json";
 export const JOURNAL_PATH = ".fresh-supabase/install-journal.json";
@@ -27,6 +31,14 @@ export class InstallerStateError extends Error {
   override name = "InstallerStateError";
 }
 
+const LEGACY_BLOCK_NAMES: ReadonlyMap<string, string> = new Map([
+  ["supabase-client", "client"],
+]);
+
+function canonicalBlockName(name: string): string {
+  return LEGACY_BLOCK_NAMES.get(name) ?? name;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -52,18 +64,19 @@ export function validateInstallerManifest(value: unknown): InstallerManifest {
   const blocks = value.blocks.map((entry, index): ManifestBlock => {
     if (
       !isRecord(entry) || typeof entry.name !== "string" ||
-      typeof entry.version !== "string" ||
+      !isSemanticVersion(entry.version) ||
       Object.keys(entry).some((key) => !["name", "version"].includes(key))
     ) {
       throw new InstallerStateError(
         `installer manifest blocks[${index}] is invalid`,
       );
     }
-    return { name: entry.name, version: entry.version };
+    return { name: canonicalBlockName(entry.name), version: entry.version };
   });
   const validKinds = new Set([
     "file.create",
     "dependency.ensure",
+    "config.exclude.ensure",
     "env.ensure",
     "css.ensure",
   ]);
@@ -91,7 +104,7 @@ export function validateInstallerManifest(value: unknown): InstallerManifest {
         );
       }
       return {
-        block: entry.block,
+        block: canonicalBlockName(entry.block),
         key: entry.key,
         kind: entry.kind as BlockOperation["kind"],
         target: entry.target,

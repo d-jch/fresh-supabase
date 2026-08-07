@@ -1,10 +1,10 @@
 # Embedded block format draft
 
-- Status: Accepted for the Phase 2 executor
+- Status: Accepted; extended compatibly for v0.2
 - Schema version: 1
 
-The Phase 1 parser contract is implemented by `packages/cli/src/block.ts` and
-the definitions embedded under `packages/cli/blocks/`.
+The parser contract is implemented by `packages/cli/src/block.ts` and the
+definitions embedded under `packages/cli/blocks/`.
 
 ## Goals
 
@@ -20,11 +20,16 @@ the definitions embedded under `packages/cli/blocks/`.
 {
   "schemaVersion": 1,
   "name": "example-block",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Human-readable catalog description",
   "dependencies": ["another-block"],
   "requirements": [
-    "fresh-2"
+    "fresh-2",
+    "fresh-file-routes",
+    "env-file-ignored",
+    "fresh-root-alias",
+    "fresh-default-routes",
+    "fresh-define-helper"
   ],
   "operations": [
     {
@@ -32,6 +37,9 @@ the definitions embedded under `packages/cli/blocks/`.
       "path": "lib/example.ts",
       "template": "lib/example.ts"
     }
+  ],
+  "postInstall": [
+    "Complete a manual configuration step."
   ]
 }
 ```
@@ -40,7 +48,7 @@ The field names and operation families are the committed schema-version-1
 contract. Definitions with unknown fields, capabilities, or operation kinds are
 rejected.
 
-## Allowed v0.1 operation families
+## Allowed operation families
 
 ### `file.create`
 
@@ -55,6 +63,15 @@ account for both `deno.json` and commented `deno.jsonc`. Dependency and lockfile
 mutations occur only after the full preflight succeeds and must participate in
 installer recovery.
 
+### `config.exclude.ensure`
+
+Ensure one project-relative pattern exists in the Deno config's root `exclude`
+array. The editor preserves JSONC comments, trailing commas, and unrelated
+formatting, creates the array when absent, and rejects a malformed non-string
+array. The client block uses this operation for `supabase/.temp/**`, because
+Supabase CLI runtime output is Git-ignored but an unscoped `deno check` can
+still discover its generated TypeScript.
+
 ### `env.ensure`
 
 Document or add a non-secret environment-variable placeholder without reading,
@@ -65,8 +82,9 @@ printing, or generating credentials. Existing values are never overwritten.
 Ensure an exact, idempotent CSS directive in a preflight-verified application
 stylesheet. This is not permission to discover and rewrite arbitrary CSS files.
 
-No operation may run arbitrary shell, JavaScript, TypeScript, lifecycle, or
-`postInstall` code supplied by a block.
+No operation may run arbitrary shell, JavaScript, TypeScript, or lifecycle code
+supplied by a block. `postInstall` entries are validated, single-line human
+guidance that the CLI prints without interpretation or execution.
 
 ## Requirements and capability detection
 
@@ -74,6 +92,11 @@ Requirements describe observable project capabilities rather than assuming one
 initializer file layout. Planned capabilities include:
 
 - Fresh major version 2 and Vite project integration;
+- a `main.ts` app registering `staticFiles()` and `.fsRoutes()`;
+- an explicit root `.env` ignore rule before post-install asks for secrets;
+- Fresh's root `"@/": "./"` import alias;
+- the default-compatible `routes/` Vite plugin directory;
+- a `utils.ts` module exporting the `define` helper used by templates;
 - Tailwind CSS major version 4;
 - `@tailwindcss/vite` dependency and plugin registration;
 - an application stylesheet importing `tailwindcss`;
@@ -83,9 +106,9 @@ initializer file layout. Planned capabilities include:
 When a custom layout cannot be verified, planning reports that the capability
 could not be verified and performs no writes.
 
-`supabase-client` requires Fresh and Supabase dependencies, not Tailwind.
-`daisyui` requires verified Tailwind v4. `password-based-auth` depends on both
-blocks and inherits the daisyUI requirement.
+`client` requires Fresh and Supabase dependencies, not Tailwind. `daisyui`
+requires verified Tailwind v4. `password-based-auth` depends on both blocks and
+inherits the daisyUI requirement.
 
 ## Planning and conflict rules
 
@@ -98,11 +121,11 @@ The planner must:
 5. produce a deterministic ordered plan;
 6. hand the same plan to dry-run output or, in Phase 2, to the executor.
 
-The Phase 2 executor compiles the planner result into unique target-file
-mutations. Each mutation records an absent-or-SHA-256 precondition and a SHA-256
-result. All preconditions are rechecked before the recovery journal is created
-and again immediately before each target write. A changed precondition rejects
-the stale plan.
+The executor compiles the planner result into unique target-file mutations. Each
+mutation records an absent-or-SHA-256 precondition and a SHA-256 result. All
+preconditions are rechecked before the recovery journal is created and again
+immediately before each target write. A changed precondition rejects the stale
+plan.
 
 The executor must reject a stale plan if a precondition hash has changed.
 
@@ -111,9 +134,19 @@ The executor must reject a stale plan if a precondition hash has changed.
 `.fresh-supabase/manifest.json` records schema version 1, the CLI version, a
 sorted list of installed block names and versions, and sorted operation records.
 Each operation record contains the block, stable operation key, kind, target,
-and SHA-256 of the complete resulting target file. It is audit state, not
-permission to overwrite later user edits. Unknown fields, duplicate records,
-unsafe targets, and malformed hashes are rejected during preflight.
+and SHA-256 of the complete resulting target file. In v0.2 that hash permits an
+upgrade only when the current bytes still match the previous installed result;
+user-edited files remain conflicts. Unknown fields, duplicate records, unsafe
+targets, and malformed hashes are rejected during preflight.
+
+Downgrade protection is block-level and runs before operation inspection. If the
+manifest records a newer installed block version, every requested operation for
+that block is a conflict and the plan is rejected—even when a managed target is
+missing or the block contains no `file.create` operations.
+
+Optional `upstream` metadata records an HTTPS registry item, its registry
+dependencies, and an exact source-to-Fresh target mapping. It is provenance for
+review and synchronization, not an instruction to fetch or execute remote code.
 
 `.fresh-supabase/install-journal.json` is temporary recovery state. It records
 validated project-relative targets, exact preimages, preimage hashes, expected
@@ -141,11 +174,20 @@ and journal.
 
 - Dependency aliases are inserted directly into the existing `imports` object;
   comments, trailing commas, and unrelated formatting in `deno.jsonc` remain.
+- Deno exclusion patterns use the same comment-preserving edit and are tracked
+  as their own idempotent operations rather than rewriting the whole config.
+- A host caret range is retained only when it is a provable subset of the
+  block's required caret range; lower, broader, differently sourced, or
+  unparseable specifiers remain conflicts.
 - Duplicate `imports` objects or alias keys are ambiguous and rejected.
 - Environment placeholders and CSS statements are single-line data; existing
   environment values are never replaced.
-- Existing `file.create` targets are idempotent only when their bytes exactly
-  match the embedded template. Other content is a conflict regardless of the
-  manifest.
+- Existing `file.create` targets are satisfied when their bytes exactly match
+  the embedded template. A newer block version may replace different content
+  only when the manifest records the same operation and target and the current
+  bytes still match its recorded hash; otherwise the target is a conflict.
+- An installed block version newer than the requested catalog block is always a
+  block-level conflict. Missing files and configuration-only blocks do not
+  weaken this downgrade rule.
 - Writes are recoverable at the project-file level. The CLI does not claim
   atomicity for process, network, cache, or other environment-level effects.

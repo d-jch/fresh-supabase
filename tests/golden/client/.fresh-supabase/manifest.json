@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "cliVersion": "0.2.0",
+  "blocks": [
+    {
+      "name": "client",
+      "version": "0.2.0"
+    }
+  ],
+  "operations": [
+    {
+      "block": "client",
+      "key": "config-exclude:supabase/.temp/**",
+      "kind": "config.exclude.ensure",
+      "target": "deno.json",
+      "contentHash": "dc6de34324b1583aaa63bea9cb7f25a4df31140011cd7f25cd8c7d1593eb3534"
+    },
+    {
+      "block": "client",
+      "key": "dependency:@supabase/ssr",
+      "kind": "dependency.ensure",
+      "target": "deno.json",
+      "contentHash": "dc6de34324b1583aaa63bea9cb7f25a4df31140011cd7f25cd8c7d1593eb3534"
+    },
+    {
+      "block": "client",
+      "key": "dependency:@supabase/supabase-js",
+      "kind": "dependency.ensure",
+      "target": "deno.json",
+      "contentHash": "dc6de34324b1583aaa63bea9cb7f25a4df31140011cd7f25cd8c7d1593eb3534"
+    },
+    {
+      "block": "client",
+      "key": "env:.env.example:FRESH_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "kind": "env.ensure",
+      "target": ".env.example",
+      "contentHash": "07de17fe4721220ad32864b5cd9a135cb4ae217c6941a39669dc12e87a4fb496"
+    },
+    {
+      "block": "client",
+      "key": "env:.env.example:FRESH_PUBLIC_SUPABASE_URL",
+      "kind": "env.ensure",
+      "target": ".env.example",
+      "contentHash": "07de17fe4721220ad32864b5cd9a135cb4ae217c6941a39669dc12e87a4fb496"
+    },
+    {
+      "block": "client",
+      "key": "file:lib/supabase/client.ts",
+      "kind": "file.create",
+      "target": "lib/supabase/client.ts",
+      "contentHash": "46417d8c95d718d5d0dacd4e53fe961f381a0c2b8cfe2e7ed49bdcc9f4572a23"
+    },
+    {
+      "block": "client",
+      "key": "file:lib/supabase/middleware.ts",
+      "kind": "file.create",
+      "target": "lib/supabase/middleware.ts",
+      "contentHash": "f27bbc9e17be88f84d076efac00213af7bac5131482d6a48f0e1c650f5d187bd"
+    },
+    {
+      "block": "client",
+      "key": "file:lib/supabase/server.ts",
+      "kind": "file.create",
+      "target": "lib/supabase/server.ts",
+      "contentHash": "008e3d004689ead7191ccb8ef8deeb33ff234477075f5dde03128908f06187dd"
+    }
+  ]
+}

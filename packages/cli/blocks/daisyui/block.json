@@ -1,10 +1,11 @@
 {
   "schemaVersion": 1,
   "name": "daisyui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Add daisyUI 5 to a verified Fresh Tailwind CSS v4 project.",
   "dependencies": [],
   "requirements": ["fresh-2", "fresh-vite", "tailwind-4"],
+  "postInstall": [],
   "operations": [
     {
       "kind": "dependency.ensure",

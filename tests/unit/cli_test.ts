@@ -96,14 +96,14 @@ Deno.test("unsupported arguments fail without pretending to run a command", asyn
 Deno.test("list and view expose the embedded catalog", async () => {
   const list = await runCli("list");
   assert(list.code === 0, `list failed: ${list.stderr}`);
-  for (const block of ["daisyui", "supabase-client", "password-based-auth"]) {
+  for (const block of ["daisyui", "client", "password-based-auth"]) {
     assert(list.stdout.includes(block), `list is missing ${block}`);
   }
 
   const view = await runCli("view", "password-based-auth");
   assert(view.code === 0, `view failed: ${view.stderr}`);
   assert(
-    view.stdout.includes("Dependencies: supabase-client, daisyui"),
+    view.stdout.includes("Dependencies: client, daisyui"),
     view.stdout,
   );
   assert(view.stdout.includes("file.create"), view.stdout);
@@ -119,6 +119,15 @@ Deno.test("doctor verifies an official-shape Fresh Tailwind project", async () =
   });
 });
 
+Deno.test("doctor fails when the Fresh scaffold contract is incomplete", async () => {
+  await withTestProject({ rootAlias: false }, async (root) => {
+    const result = await runCliIn(root, "doctor");
+    assert(result.code === 1, `doctor unexpectedly passed: ${result.stdout}`);
+    assert(result.stdout.includes("Root alias"), result.stdout);
+    assert(result.stdout.includes("MISSING"), result.stdout);
+  });
+});
+
 Deno.test("add --dry-run prints a full plan and does not install", async () => {
   await withTestProject({ tailwind: true }, async (root) => {
     const result = await runCliIn(
@@ -131,7 +140,7 @@ Deno.test("add --dry-run prints a full plan and does not install", async () => {
       result.code === 0,
       `dry-run failed: ${result.stderr}\n${result.stdout}`,
     );
-    assert(result.stdout.includes("1. supabase-client"), result.stdout);
+    assert(result.stdout.includes("1. client"), result.stdout);
     assert(result.stdout.includes("2. daisyui"), result.stdout);
     assert(result.stdout.includes("3. password-based-auth"), result.stdout);
     assert(result.stdout.includes("Preflight: PASS"), result.stdout);
@@ -147,17 +156,40 @@ Deno.test("add --dry-run prints a full plan and does not install", async () => {
   });
 });
 
+Deno.test("add accepts multiple blocks and deduplicates their dependency closure", async () => {
+  await withTestProject({ tailwind: true }, async (root) => {
+    const result = await runCliIn(
+      root,
+      "add",
+      "client",
+      "password-based-auth",
+      "--dry-run",
+    );
+    assert(result.code === 0, result.stderr + result.stdout);
+    assert(
+      result.stdout.includes(
+        "Dry run: client, password-based-auth",
+      ),
+      result.stdout,
+    );
+    assert(result.stdout.includes("1. client"), result.stdout);
+    assert(result.stdout.includes("2. daisyui"), result.stdout);
+    assert(result.stdout.includes("3. password-based-auth"), result.stdout);
+    assert(!result.stdout.includes("4. client"), result.stdout);
+  });
+});
+
 Deno.test("add installs a base block and a repeat is unchanged", async () => {
   await withTestProject({}, async (root) => {
-    const installed = await runCliIn(root, "add", "supabase-client");
+    const installed = await runCliIn(root, "add", "client");
     assert(installed.code === 0, installed.stderr + installed.stdout);
     assert(
-      installed.stdout.includes("Installed supabase-client"),
+      installed.stdout.includes("Installed client"),
       installed.stdout,
     );
     assert(installed.stdout.includes("manifest.json"), installed.stdout);
 
-    const repeated = await runCliIn(root, "add", "supabase-client");
+    const repeated = await runCliIn(root, "add", "client");
     assert(repeated.code === 0, repeated.stderr + repeated.stdout);
     assert(repeated.stdout.includes("already installed"), repeated.stdout);
   });

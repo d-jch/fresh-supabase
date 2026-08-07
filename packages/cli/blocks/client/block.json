@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "name": "client",
+  "version": "0.2.0",
+  "description": "Add request-scoped Supabase SSR, session middleware, and browser clients without UI requirements.",
+  "dependencies": [],
+  "requirements": [
+    "env-file-ignored",
+    "fresh-2",
+    "fresh-file-routes",
+    "fresh-default-routes",
+    "fresh-define-helper",
+    "fresh-root-alias"
+  ],
+  "postInstall": [
+    "Copy the Supabase values from .env.example into a local .env or your deployment environment.",
+    "Load local values with `deno task --env-file dev`; production builds read FRESH_PUBLIC_* values during `deno task build`.",
+    "Server routes that can refresh or mutate auth must return `commitSupabaseResponse(response, pending)`; installing `client` alone does not wire middleware or commit cookies automatically."
+  ],
+  "operations": [
+    {
+      "kind": "config.exclude.ensure",
+      "pattern": "supabase/.temp/**"
+    },
+    {
+      "kind": "dependency.ensure",
+      "alias": "@supabase/supabase-js",
+      "specifier": "npm:@supabase/supabase-js@^2.112.0"
+    },
+    {
+      "kind": "dependency.ensure",
+      "alias": "@supabase/ssr",
+      "specifier": "npm:@supabase/ssr@^0.12.4"
+    },
+    {
+      "kind": "env.ensure",
+      "path": ".env.example",
+      "name": "FRESH_PUBLIC_SUPABASE_URL",
+      "placeholder": "https://your-project.supabase.co"
+    },
+    {
+      "kind": "env.ensure",
+      "path": ".env.example",
+      "name": "FRESH_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "placeholder": "your-publishable-key"
+    },
+    {
+      "kind": "file.create",
+      "path": "lib/supabase/client.ts",
+      "template": "templates/lib/supabase/client.ts"
+    },
+    {
+      "kind": "file.create",
+      "path": "lib/supabase/middleware.ts",
+      "template": "templates/lib/supabase/middleware.ts"
+    },
+    {
+      "kind": "file.create",
+      "path": "lib/supabase/server.ts",
+      "template": "templates/lib/supabase/server.ts"
+    }
+  ]
+}

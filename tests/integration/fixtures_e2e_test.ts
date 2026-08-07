@@ -204,7 +204,7 @@ Deno.test("mutated fixtures exercise existing-project safety cases", async () =>
     const plan = await createInstallPlan(root, "password-based-auth");
     assert(
       plan.issues.some((issue) =>
-        issue.kind === "conflict" && issue.message.includes("sign-in.tsx")
+        issue.kind === "conflict" && issue.message.includes("login.tsx")
       ),
     );
     assertEquals(await fileHashes(root), before, "preflight must not write");
@@ -215,8 +215,8 @@ Deno.test("mutated fixtures exercise existing-project safety cases", async () =>
     async (root) => {
       const executable = await createExecutablePlan(
         root,
-        "supabase-client",
-        "0.1.0",
+        "client",
+        "0.2.0",
       );
       assertEquals(executable.installPlan.issues, []);
       await executeInstallPlan(executable);
@@ -257,8 +257,8 @@ Deno.test("mutated fixtures exercise existing-project safety cases", async () =>
     async (root) => {
       const executable = await createExecutablePlan(
         root,
-        "supabase-client",
-        "0.1.0",
+        "client",
+        "0.2.0",
       );
       assertEquals(executable.installPlan.issues, []);
       assert(executable.installPlan.partialInstallation);
@@ -266,14 +266,14 @@ Deno.test("mutated fixtures exercise existing-project safety cases", async () =>
         executable.installPlan.operations.some((operation) =>
           operation.state === "satisfied" &&
           operation.operation.kind === "file.create" &&
-          operation.operation.path === "lib/supabase/env.ts"
+          operation.operation.path === "lib/supabase/client.ts"
         ),
       );
       await executeInstallPlan(executable);
       const repeated = await createExecutablePlan(
         root,
-        "supabase-client",
-        "0.1.0",
+        "client",
+        "0.2.0",
       );
       assertEquals((await executeInstallPlan(repeated)).changed, false);
     },
@@ -285,8 +285,8 @@ Deno.test("fresh installations match committed golden projects", async () => {
     const testCase of [
       {
         source: "fresh-2.3.3-no-tailwind",
-        block: "supabase-client",
-        golden: "supabase-client",
+        block: "client",
+        golden: "client",
       },
       {
         source: "fresh-2.3.3-tailwind",
@@ -299,7 +299,7 @@ Deno.test("fresh installations match committed golden projects", async () => {
       const executable = await createExecutablePlan(
         root,
         testCase.block,
-        "0.1.0",
+        "0.2.0",
       );
       assertEquals(executable.installPlan.issues, []);
       await executeInstallPlan(executable);
@@ -336,26 +336,31 @@ Deno.test("generated example has reviewed server-first structure", async () => {
   assertEquals(
     manifest.blocks.map((block) => `${block.name}@${block.version}`),
     [
-      "daisyui@0.1.0",
-      "password-based-auth@0.1.0",
-      "supabase-client@0.1.0",
+      "client@0.2.0",
+      "daisyui@0.2.0",
+      "password-based-auth@0.2.0",
     ],
   );
 
   for (
     const path of [
+      "routes/auth/login.tsx",
+      "routes/auth/error.tsx",
+      "routes/protected/index.tsx",
+      "routes/auth/confirm.ts",
+      "components/auth/login-form.tsx",
+      "routes/_middleware.ts",
+      "routes/auth/sign-up.tsx",
+      "routes/auth/sign-up-success.tsx",
+      "components/auth/sign-up-form.tsx",
+      "routes/auth/forgot-password.tsx",
+      "routes/auth/update-password.tsx",
+      "components/auth/forgot-password-form.tsx",
+      "components/auth/update-password-form.tsx",
+      "components/auth/logout-button.tsx",
+      "lib/supabase/client.ts",
+      "lib/supabase/middleware.ts",
       "lib/supabase/server.ts",
-      "routes/(auth)/_middleware.ts",
-      "routes/(auth)/auth/sign-in.tsx",
-      "routes/(auth)/auth/sign-up.tsx",
-      "routes/(auth)/auth/forgot-password.tsx",
-      "routes/(auth)/auth/update-password.tsx",
-      "routes/(auth)/auth/confirm.ts",
-      "routes/(auth)/auth/sign-out.ts",
-      "routes/(protected)/_middleware.ts",
-      "routes/(protected)/account.tsx",
-      "supabase/templates/confirmation.html",
-      "supabase/templates/recovery.html",
     ]
   ) {
     assert(
@@ -363,13 +368,6 @@ Deno.test("generated example has reviewed server-first structure", async () => {
       path,
     );
   }
-  await Deno.lstat(join(EXAMPLE_ROOT, "routes", "_middleware.ts")).then(
-    () => {
-      throw new Error("example must not contain global session middleware");
-    },
-    (error) => assert(error instanceof Deno.errors.NotFound),
-  );
-
   for (const [path] of Object.entries(provenance.files)) {
     if (!/\.[tj]sx?$/.test(path)) continue;
     assert(
@@ -423,6 +421,8 @@ Deno.test({
         new Set(["_fresh", "node_modules"]),
       );
       await commandOutput(["install", "--frozen"], root);
+      const projectCheck = await commandOutput(["task", "check"], root);
+      assert(projectCheck.includes("Checked"), projectCheck);
       const normalBuild = await commandOutput(["task", "build"], root);
       assert(normalBuild.includes("built in"), normalBuild);
       assert((await Deno.stat(join(root, "_fresh", "server.js"))).isFile);

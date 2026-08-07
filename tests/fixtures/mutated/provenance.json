@@ -6,10 +6,10 @@
   },
   "mutations": {
     "existing-daisyui": "adds the exact daisyUI dependency and CSS plugin statement",
-    "existing-auth-route": "adds a user-owned sign-in route",
+    "existing-auth-route": "adds a user-owned login route",
     "commented-deno-jsonc": "converts deno.json to deno.jsonc with comments and a trailing comma",
     "missing-tailwind-plugin": "retains Tailwind imports but removes tailwindcss() from Vite plugins",
-    "partial-installation": "adds exactly one embedded supabase-client template without installer state"
+    "partial-installation": "adds exactly one embedded client template without installer state"
   },
   "files": {
     "existing-daisyui": {
@@ -39,8 +39,8 @@
       "main.ts": "df63c8994e8e522fda7faa411a8fcfef1823fc2a68f79cff2be1b6ebf5e2e6a9",
       "README.md": "b1fab25fb0ce1d2e52e27c71a1664b0d2ab77c4ddaa1610b3e48ab0e2194840d",
       "routes/_app.tsx": "21e377e00f9b9f0def6696df6a101e437a419d930135e59dc51cc6998a2a9de5",
-      "routes/(auth)/auth/sign-in.tsx": "3a1e9321c2918ab2ddf69aa6110423a4758cd2023da40bd7fac88ad054b574bf",
       "routes/api/[name].tsx": "fd48518cd33964d1f6b628363349e846905b031de4c8dddf5e5f93c0d2664637",
+      "routes/auth/login.tsx": "a3ab75e2d712b7349f268c8e2411fa07e1b02737d1b06c4afdf848fec7beff9d",
       "routes/index.tsx": "80ff74efad53f22b1675562ad9386a7d822039a9fd4e3220c49b30f98db867c0",
       "static/favicon.ico": "ceefc31bd51194e03c78f9d35f9ca4d8b474b01280f83cd1490fb96a87c0dd12",
       "static/logo.svg": "bf1196aeac0c511ec4b81b846993de208012c4158fba73d17b575236164d63ce",
@@ -88,7 +88,7 @@
       "components/Button.tsx": "1944c487179125c5ac4b395a1ce2a8772838cddca25317479abcec7c66819f96",
       "deno.json": "9f169d24e5d06104968e1ae9a7d4fcc148e382bc930a35b092f0410b946f73f7",
       "islands/Counter.tsx": "3211057b74b3567a0548b251e43eadb4419c23155e9a54a2bb1415d3f58df7b1",
-      "lib/supabase/env.ts": "25e28932df2c756ab151667fd8742c86366e66970032de8ff0b0e08dd249886c",
+      "lib/supabase/client.ts": "46417d8c95d718d5d0dacd4e53fe961f381a0c2b8cfe2e7ed49bdcc9f4572a23",
       "main.ts": "df63c8994e8e522fda7faa411a8fcfef1823fc2a68f79cff2be1b6ebf5e2e6a9",
       "README.md": "b1fab25fb0ce1d2e52e27c71a1664b0d2ab77c4ddaa1610b3e48ab0e2194840d",
       "routes/_app.tsx": "f2ad463bae0a89db2db7ba1c5b681ccc2a1c5cc303957623e5312feeb1d1c929",

@@ -8,13 +8,15 @@ import { withTestProject } from "../unit/test_project.ts";
 
 Deno.test("generated Supabase base modules type-check", async () => {
   await withTestProject({}, async (root) => {
-    const plan = await createExecutablePlan(root, "supabase-client", "0.1.0");
+    const plan = await createExecutablePlan(root, "client", "0.2.0");
     assertEquals(plan.installPlan.issues, []);
     await executeInstallPlan(plan);
 
-    const generated = ["env.ts", "client.ts", "server.ts", "response.ts"].map(
-      (name) => join(root, "lib", "supabase", name),
-    );
+    const generated = [
+      join(root, "lib", "supabase", "client.ts"),
+      join(root, "lib", "supabase", "middleware.ts"),
+      join(root, "lib", "supabase", "server.ts"),
+    ];
     const output = await new Deno.Command(Deno.execPath(), {
       args: ["check", "--config", join(root, "deno.json"), ...generated],
       cwd: root,

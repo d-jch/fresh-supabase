@@ -1,21 +1,77 @@
 {
   "schemaVersion": 1,
-  "cliVersion": "0.1.0",
+  "cliVersion": "0.2.0",
   "blocks": [
     {
+      "name": "client",
+      "version": "0.2.0"
+    },
+    {
       "name": "daisyui",
-      "version": "0.1.0"
+      "version": "0.2.0"
     },
     {
       "name": "password-based-auth",
-      "version": "0.1.0"
-    },
-    {
-      "name": "supabase-client",
-      "version": "0.1.0"
+      "version": "0.2.0"
     }
   ],
   "operations": [
+    {
+      "block": "client",
+      "key": "config-exclude:supabase/.temp/**",
+      "kind": "config.exclude.ensure",
+      "target": "deno.json",
+      "contentHash": "72e0097f907809fbb178a90b4ea8304454e929314295eca3524a834ab4ba7560"
+    },
+    {
+      "block": "client",
+      "key": "dependency:@supabase/ssr",
+      "kind": "dependency.ensure",
+      "target": "deno.json",
+      "contentHash": "72e0097f907809fbb178a90b4ea8304454e929314295eca3524a834ab4ba7560"
+    },
+    {
+      "block": "client",
+      "key": "dependency:@supabase/supabase-js",
+      "kind": "dependency.ensure",
+      "target": "deno.json",
+      "contentHash": "72e0097f907809fbb178a90b4ea8304454e929314295eca3524a834ab4ba7560"
+    },
+    {
+      "block": "client",
+      "key": "env:.env.example:FRESH_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "kind": "env.ensure",
+      "target": ".env.example",
+      "contentHash": "07de17fe4721220ad32864b5cd9a135cb4ae217c6941a39669dc12e87a4fb496"
+    },
+    {
+      "block": "client",
+      "key": "env:.env.example:FRESH_PUBLIC_SUPABASE_URL",
+      "kind": "env.ensure",
+      "target": ".env.example",
+      "contentHash": "07de17fe4721220ad32864b5cd9a135cb4ae217c6941a39669dc12e87a4fb496"
+    },
+    {
+      "block": "client",
+      "key": "file:lib/supabase/client.ts",
+      "kind": "file.create",
+      "target": "lib/supabase/client.ts",
+      "contentHash": "46417d8c95d718d5d0dacd4e53fe961f381a0c2b8cfe2e7ed49bdcc9f4572a23"
+    },
+    {
+      "block": "client",
+      "key": "file:lib/supabase/middleware.ts",
+      "kind": "file.create",
+      "target": "lib/supabase/middleware.ts",
+      "contentHash": "f27bbc9e17be88f84d076efac00213af7bac5131482d6a48f0e1c650f5d187bd"
+    },
+    {
+      "block": "client",
+      "key": "file:lib/supabase/server.ts",
+      "kind": "file.create",
+      "target": "lib/supabase/server.ts",
+      "contentHash": "008e3d004689ead7191ccb8ef8deeb33ff234477075f5dde03128908f06187dd"
+    },
     {
       "block": "daisyui",
       "key": "css:assets/styles.css:@plugin \"daisyui\";",
@@ -28,154 +84,105 @@
       "key": "dependency:daisyui",
       "kind": "dependency.ensure",
       "target": "deno.json",
-      "contentHash": "e5ca2ccfda77c48c6bb49fbc22548320d2e4e14ad428bdef3a7a2dcbc13b5abb"
+      "contentHash": "72e0097f907809fbb178a90b4ea8304454e929314295eca3524a834ab4ba7560"
     },
     {
       "block": "password-based-auth",
-      "key": "file:lib/supabase/redirect.ts",
+      "key": "file:components/auth/forgot-password-form.tsx",
       "kind": "file.create",
-      "target": "lib/supabase/redirect.ts",
-      "contentHash": "800b6a3c57742e47dd863c4a37d3c303066588c5b310a634c9a58a5d1706bbbc"
+      "target": "components/auth/forgot-password-form.tsx",
+      "contentHash": "4a8311fac35e09a33d6df2e6c5d73477bd4d6d5d4cc1659ca976b9a015df9189"
     },
     {
       "block": "password-based-auth",
-      "key": "file:lib/supabase/require_user.ts",
+      "key": "file:components/auth/login-form.tsx",
       "kind": "file.create",
-      "target": "lib/supabase/require_user.ts",
-      "contentHash": "7cdba60a7c1682cea313b433226fcc5dc0a3a2764ac38976823158d48398fb46"
+      "target": "components/auth/login-form.tsx",
+      "contentHash": "8aed77fbcc60ea65a34321d8cd41235fb6a9eb1bd8aab895548c72059d3ba7b7"
     },
     {
       "block": "password-based-auth",
-      "key": "file:routes/(auth)/_middleware.ts",
+      "key": "file:components/auth/logout-button.tsx",
       "kind": "file.create",
-      "target": "routes/(auth)/_middleware.ts",
-      "contentHash": "3f72844021b44e3426c0fdba442b8af3f926ddaa565541dee2bfdbce90666ba4"
+      "target": "components/auth/logout-button.tsx",
+      "contentHash": "64c6bb7f9a9c1365cf5e19478fd6968107ae4949d3596bfb3617e9659dd63d62"
     },
     {
       "block": "password-based-auth",
-      "key": "file:routes/(auth)/auth/confirm.ts",
+      "key": "file:components/auth/sign-up-form.tsx",
       "kind": "file.create",
-      "target": "routes/(auth)/auth/confirm.ts",
-      "contentHash": "ac8b891cf8a59f2879030db7bcc9a1b2c5aaedb834f614bd4e2b35195a23b57b"
+      "target": "components/auth/sign-up-form.tsx",
+      "contentHash": "9e33370ae0036ff07a48778776d688d5e407c8d9395579d7b28b9727192c1463"
     },
     {
       "block": "password-based-auth",
-      "key": "file:routes/(auth)/auth/forgot-password.tsx",
+      "key": "file:components/auth/update-password-form.tsx",
       "kind": "file.create",
-      "target": "routes/(auth)/auth/forgot-password.tsx",
-      "contentHash": "12f0e3f36ba1e7a6627cc6911e03f1f9e4682f10c46581b68800eae2fbca3c41"
+      "target": "components/auth/update-password-form.tsx",
+      "contentHash": "b212d4f42e2e8d5684d68448f67801fd11a78efb61ad41128932b39892cad0d8"
     },
     {
       "block": "password-based-auth",
-      "key": "file:routes/(auth)/auth/sign-in.tsx",
+      "key": "file:routes/_middleware.ts",
       "kind": "file.create",
-      "target": "routes/(auth)/auth/sign-in.tsx",
-      "contentHash": "3a404063c3c59aef99fdbeffa58071876e0d42044614289da59b477c6a126fd9"
+      "target": "routes/_middleware.ts",
+      "contentHash": "7dcd52722dff13cae68bdd3e4af6b02883a04b241049aa2550273b162abae10f"
     },
     {
       "block": "password-based-auth",
-      "key": "file:routes/(auth)/auth/sign-out.ts",
+      "key": "file:routes/auth/confirm.ts",
       "kind": "file.create",
-      "target": "routes/(auth)/auth/sign-out.ts",
-      "contentHash": "725a3be3a57b3b2136d2820a7d6336b404a548400271bada69e99a7efceca089"
+      "target": "routes/auth/confirm.ts",
+      "contentHash": "d24924339c8399a81acb9fb29fc9c3f08584b316c092d992651cfd6c1739edc5"
     },
     {
       "block": "password-based-auth",
-      "key": "file:routes/(auth)/auth/sign-up.tsx",
+      "key": "file:routes/auth/error.tsx",
       "kind": "file.create",
-      "target": "routes/(auth)/auth/sign-up.tsx",
-      "contentHash": "9b7c348ff4a9cd73c03a312600bdd3b8753004cba345c96a3b1a55f9c85507cc"
+      "target": "routes/auth/error.tsx",
+      "contentHash": "6dc078c943523491740f78176dc8e76207c642e649d75763162f44c70441935e"
     },
     {
       "block": "password-based-auth",
-      "key": "file:routes/(auth)/auth/update-password.tsx",
+      "key": "file:routes/auth/forgot-password.tsx",
       "kind": "file.create",
-      "target": "routes/(auth)/auth/update-password.tsx",
-      "contentHash": "5b2f529f5184174e2dad24540bfa99b31b32477ff754255765acaf357da5af0b"
+      "target": "routes/auth/forgot-password.tsx",
+      "contentHash": "eee54575d76f1e3dcee98e16d3735f2be1ede40962d543d5fca8ab771ca88041"
     },
     {
       "block": "password-based-auth",
-      "key": "file:routes/(protected)/_middleware.ts",
+      "key": "file:routes/auth/login.tsx",
       "kind": "file.create",
-      "target": "routes/(protected)/_middleware.ts",
-      "contentHash": "c68b421510a162d4a96b3d66e05f7acb2e449e606aa07484974d1e239525a321"
+      "target": "routes/auth/login.tsx",
+      "contentHash": "e37c9953c8aa0f98b84f6007b5494ef29f656c82d7c48147a220788b2a15f757"
     },
     {
       "block": "password-based-auth",
-      "key": "file:routes/(protected)/account.tsx",
+      "key": "file:routes/auth/sign-up-success.tsx",
       "kind": "file.create",
-      "target": "routes/(protected)/account.tsx",
-      "contentHash": "4ff5a2e071955aa4e5ed8ba117b57a4eb750bbc40ecfaf407f666974e6baf2ba"
+      "target": "routes/auth/sign-up-success.tsx",
+      "contentHash": "79da8e60667651de9dd1a9649430c8984e5085b370a50a5e4b45844ee20d0614"
     },
     {
       "block": "password-based-auth",
-      "key": "file:supabase/templates/confirmation.html",
+      "key": "file:routes/auth/sign-up.tsx",
       "kind": "file.create",
-      "target": "supabase/templates/confirmation.html",
-      "contentHash": "2e706211ece48f416f095673d34d0596deba4934bf229045120c6a516ddd4539"
+      "target": "routes/auth/sign-up.tsx",
+      "contentHash": "3c66edd6acd87ce33e62dd7dd4253aa1e85e04dbf80a40ca67bd33e92d3da959"
     },
     {
       "block": "password-based-auth",
-      "key": "file:supabase/templates/recovery.html",
+      "key": "file:routes/auth/update-password.tsx",
       "kind": "file.create",
-      "target": "supabase/templates/recovery.html",
-      "contentHash": "5ecdbeb1ffec7df4798a72d4a3fb195d9fc1257841788d13e6836f56954d937f"
+      "target": "routes/auth/update-password.tsx",
+      "contentHash": "a7fbed9e72a23e16078ac3d326d8ce416cd7ccba83893a39384e46b89bd02f53"
     },
     {
-      "block": "supabase-client",
-      "key": "dependency:@supabase/ssr",
-      "kind": "dependency.ensure",
-      "target": "deno.json",
-      "contentHash": "e5ca2ccfda77c48c6bb49fbc22548320d2e4e14ad428bdef3a7a2dcbc13b5abb"
-    },
-    {
-      "block": "supabase-client",
-      "key": "dependency:@supabase/supabase-js",
-      "kind": "dependency.ensure",
-      "target": "deno.json",
-      "contentHash": "e5ca2ccfda77c48c6bb49fbc22548320d2e4e14ad428bdef3a7a2dcbc13b5abb"
-    },
-    {
-      "block": "supabase-client",
-      "key": "env:.env.example:FRESH_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-      "kind": "env.ensure",
-      "target": ".env.example",
-      "contentHash": "07de17fe4721220ad32864b5cd9a135cb4ae217c6941a39669dc12e87a4fb496"
-    },
-    {
-      "block": "supabase-client",
-      "key": "env:.env.example:FRESH_PUBLIC_SUPABASE_URL",
-      "kind": "env.ensure",
-      "target": ".env.example",
-      "contentHash": "07de17fe4721220ad32864b5cd9a135cb4ae217c6941a39669dc12e87a4fb496"
-    },
-    {
-      "block": "supabase-client",
-      "key": "file:lib/supabase/client.ts",
+      "block": "password-based-auth",
+      "key": "file:routes/protected/index.tsx",
       "kind": "file.create",
-      "target": "lib/supabase/client.ts",
-      "contentHash": "c544ce9c30c8bad448eb5b01198bac160922247771abc081fa0568a6b44936af"
-    },
-    {
-      "block": "supabase-client",
-      "key": "file:lib/supabase/env.ts",
-      "kind": "file.create",
-      "target": "lib/supabase/env.ts",
-      "contentHash": "25e28932df2c756ab151667fd8742c86366e66970032de8ff0b0e08dd249886c"
-    },
-    {
-      "block": "supabase-client",
-      "key": "file:lib/supabase/response.ts",
-      "kind": "file.create",
-      "target": "lib/supabase/response.ts",
-      "contentHash": "07b723c65c83b889343c628de284f34a46de77785e63d3e7030ef84537cbac7e"
-    },
-    {
-      "block": "supabase-client",
-      "key": "file:lib/supabase/server.ts",
-      "kind": "file.create",
-      "target": "lib/supabase/server.ts",
-      "contentHash": "3a8aba240f8fabc64b0840d527b8e7d9bbb12ff2c057dc33b20333f15ec7cd6b"
+      "target": "routes/protected/index.tsx",
+      "contentHash": "fc9059510ea8c023f91e8c11f7284e6ff9d215a5aefef6685c704c0b3ef87f1c"
     }
   ]
 }

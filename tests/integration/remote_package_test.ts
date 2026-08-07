@@ -61,7 +61,7 @@ Deno.test("the CLI installs when its module graph is loaded over HTTP", async ()
           "--allow-write",
           `http://${origin}/main.ts`,
           "add",
-          "supabase-client",
+          "client",
         ],
         stdout: "piped",
         stderr: "piped",
@@ -73,7 +73,7 @@ Deno.test("the CLI installs when its module graph is loaded over HTTP", async ()
         `remote CLI failed:\n${decoder.decode(output.stderr)}`,
       );
       assert(
-        decoder.decode(output.stdout).includes("Installed supabase-client"),
+        decoder.decode(output.stdout).includes("Installed client"),
         "remote CLI did not report an installation",
       );
       assert(

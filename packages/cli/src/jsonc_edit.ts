@@ -101,6 +101,20 @@ function matchingBrace(tokens: JsoncToken[], openIndex: number): number {
   return -1;
 }
 
+function matchingBracket(tokens: JsoncToken[], openIndex: number): number {
+  let depth = 0;
+  for (let index = openIndex; index < tokens.length; index++) {
+    if (tokens[index].kind === "punctuation" && tokens[index].value === "[") {
+      depth++;
+    }
+    if (tokens[index].kind === "punctuation" && tokens[index].value === "]") {
+      depth--;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
+}
+
 function findImportsObject(tokens: JsoncToken[]): [number, number] {
   if (tokens[0]?.kind !== "punctuation" || tokens[0].value !== "{") {
     throw new JsoncEditError("Deno config root must be an object");
@@ -183,6 +197,158 @@ function indentationAt(source: string, offset: number): string {
   return /^[ \t]*$/.test(prefix) ? prefix : "";
 }
 
+function insertRootArrayProperty(
+  source: string,
+  tokens: JsoncToken[],
+  rootCloseIndex: number,
+  property: string,
+  value: string,
+): string {
+  const close = tokens[rootCloseIndex];
+  const members = tokens.slice(1, rootCloseIndex);
+  const last = members.at(-1);
+  const closeIndent = indentationAt(source, close.start);
+  const indentUnit = closeIndent.includes("\t") ? "\t" : "  ";
+  const childIndent = closeIndent + indentUnit;
+  const eol = source.includes("\r\n") ? "\r\n" : "\n";
+  const rendered = `${JSON.stringify(property)}: [${JSON.stringify(value)}]`;
+  const closeLineStart = lineStart(source, close.start);
+  const multiline = /^[ \t]*$/.test(
+    source.slice(closeLineStart, close.start),
+  );
+
+  if (!multiline) {
+    if (!last) {
+      return source.slice(0, close.start) + rendered +
+        source.slice(close.start);
+    }
+    if (last.kind === "punctuation" && last.value === ",") {
+      return source.slice(0, close.start) + ` ${rendered}` +
+        source.slice(close.start);
+    }
+    return source.slice(0, last.end) + `, ${rendered}` +
+      source.slice(last.end);
+  }
+
+  const insertion = closeLineStart;
+  const prefixed = `${childIndent}${rendered}${eol}`;
+  if (!last || (last.kind === "punctuation" && last.value === ",")) {
+    return source.slice(0, insertion) + prefixed + source.slice(insertion);
+  }
+  return source.slice(0, last.end) + "," +
+    source.slice(last.end, insertion) + prefixed + source.slice(insertion);
+}
+
+function insertArrayValue(
+  source: string,
+  tokens: JsoncToken[],
+  openIndex: number,
+  closeIndex: number,
+  value: string,
+): string {
+  const close = tokens[closeIndex];
+  const members = tokens.slice(openIndex + 1, closeIndex);
+  const last = members.at(-1);
+  const rendered = JSON.stringify(value);
+  const closeLineStart = lineStart(source, close.start);
+  const multiline = /^[ \t]*$/.test(
+    source.slice(closeLineStart, close.start),
+  );
+
+  if (!multiline) {
+    if (!last) {
+      return source.slice(0, close.start) + rendered +
+        source.slice(close.start);
+    }
+    if (last.kind === "punctuation" && last.value === ",") {
+      return source.slice(0, close.start) + ` ${rendered}` +
+        source.slice(close.start);
+    }
+    return source.slice(0, last.end) + `, ${rendered}` +
+      source.slice(last.end);
+  }
+
+  const closeIndent = indentationAt(source, close.start);
+  const first = members.find((token) => token.kind === "string");
+  const firstIndent = first ? indentationAt(source, first.start) : "";
+  const indentUnit = closeIndent.includes("\t") ? "\t" : "  ";
+  const childIndent = firstIndent || closeIndent + indentUnit;
+  const eol = source.includes("\r\n") ? "\r\n" : "\n";
+  const insertion = closeLineStart;
+  const prefixed = `${childIndent}${rendered}${eol}`;
+  if (!last || (last.kind === "punctuation" && last.value === ",")) {
+    return source.slice(0, insertion) + prefixed + source.slice(insertion);
+  }
+  return source.slice(0, last.end) + "," +
+    source.slice(last.end, insertion) + prefixed + source.slice(insertion);
+}
+
+export function ensureJsoncStringArrayEntry(
+  source: string,
+  property: string,
+  value: string,
+): string {
+  const tokens = scanJsonc(source);
+  if (tokens[0]?.kind !== "punctuation" || tokens[0].value !== "{") {
+    throw new JsoncEditError("Deno config root must be an object");
+  }
+  const rootClose = matchingBrace(tokens, 0);
+  if (rootClose < 0) throw new JsoncEditError("Deno config object is unclosed");
+
+  let depth = 0;
+  const matches: number[] = [];
+  for (let index = 1; index < rootClose; index++) {
+    const token = tokens[index];
+    if (
+      depth === 0 && token.kind === "string" && token.value === property &&
+      tokens[index + 1]?.kind === "punctuation" &&
+      tokens[index + 1].value === ":"
+    ) {
+      matches.push(index + 2);
+    }
+    if (
+      token.kind === "punctuation" &&
+      (token.value === "{" || token.value === "[")
+    ) depth++;
+    if (
+      token.kind === "punctuation" &&
+      (token.value === "}" || token.value === "]")
+    ) depth--;
+  }
+  if (matches.length > 1) {
+    throw new JsoncEditError(
+      `Deno config contains duplicate ${property} properties`,
+    );
+  }
+  if (matches.length === 0) {
+    return insertRootArrayProperty(
+      source,
+      tokens,
+      rootClose,
+      property,
+      value,
+    );
+  }
+
+  const openIndex = matches[0];
+  if (
+    tokens[openIndex]?.kind !== "punctuation" ||
+    tokens[openIndex].value !== "["
+  ) {
+    throw new JsoncEditError(`Deno config ${property} must be an array`);
+  }
+  const closeIndex = matchingBracket(tokens, openIndex);
+  if (closeIndex < 0 || closeIndex > rootClose) {
+    throw new JsoncEditError(`Deno config ${property} array is unclosed`);
+  }
+  if (
+    tokens.slice(openIndex + 1, closeIndex).some((token) =>
+      token.kind === "string" && token.value === value
+    )
+  ) return source;
+  return insertArrayValue(source, tokens, openIndex, closeIndex, value);
+}
+
 export function ensureJsoncImports(
   source: string,
   entries: readonly { alias: string; specifier: string }[],
@@ -190,7 +356,6 @@ export function ensureJsoncImports(
   if (entries.length === 0) return source;
   const tokens = scanJsonc(source);
   const [openIndex, closeIndex] = findImportsObject(tokens);
-  const open = tokens[openIndex];
   const close = tokens[closeIndex];
   const members = tokens.slice(openIndex + 1, closeIndex);
   const last = members.at(-1);

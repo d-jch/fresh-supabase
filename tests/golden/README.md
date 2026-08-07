@@ -2,7 +2,7 @@
 
 Golden outputs are full expected projects produced from distinct pinned inputs:
 
-- `supabase-client` starts from the no-Tailwind Fresh 2.3.3 fixture;
+- `client` starts from the no-Tailwind Fresh 2.3.3 fixture;
 - `password-based-auth` starts from the Tailwind Fresh 2.3.3 fixture.
 
 `provenance.json` records every committed file hash. `REVIEW.md` defines the

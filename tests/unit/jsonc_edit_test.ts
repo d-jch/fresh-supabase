@@ -1,4 +1,7 @@
-import { ensureJsoncImports } from "../../packages/cli/src/jsonc_edit.ts";
+import {
+  ensureJsoncImports,
+  ensureJsoncStringArrayEntry,
+} from "../../packages/cli/src/jsonc_edit.ts";
 import { assert, assertEquals } from "./assert.ts";
 
 Deno.test("JSONC import editing preserves comments and trailing commas", () => {
@@ -59,4 +62,43 @@ Deno.test("JSONC structure ignores punctuation inside strings", () => {
     [{ alias: "daisyui", specifier: "npm:daisyui@^5.7.16" }],
   );
   assertEquals(JSON.parse(edited).imports.daisyui, "npm:daisyui@^5.7.16");
+});
+
+Deno.test("JSONC array editing preserves comments and trailing commas", () => {
+  const source = `{
+  // Keep the generated output policy.
+  "exclude": [
+    "**/_fresh/*",
+  ],
+  "imports": {},
+}
+`;
+  const edited = ensureJsoncStringArrayEntry(
+    source,
+    "exclude",
+    "supabase/.temp/**",
+  );
+
+  assert(edited.includes("generated output policy"), "comment was lost");
+  const parsed = JSON.parse(
+    edited.replace(/\/\/.*$/gm, "").replace(/,\s*([}\]])/g, "$1"),
+  );
+  assertEquals(parsed.exclude, ["**/_fresh/*", "supabase/.temp/**"]);
+});
+
+Deno.test("JSONC array editing creates a missing root property", () => {
+  const edited = ensureJsoncStringArrayEntry(
+    '{"imports": {}}\n',
+    "exclude",
+    "supabase/.temp/**",
+  );
+  assertEquals(JSON.parse(edited).exclude, ["supabase/.temp/**"]);
+});
+
+Deno.test("JSONC array editing is idempotent", () => {
+  const source = '{"exclude": ["supabase/.temp/**"]}\n';
+  assertEquals(
+    ensureJsoncStringArrayEntry(source, "exclude", "supabase/.temp/**"),
+    source,
+  );
 });
